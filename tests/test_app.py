@@ -452,3 +452,13 @@ def test_original_image_url():
           "02-characters/new-gallery/Wide/Leroy-Smith_new.png?itok=uYR3mROF")
     assert portraits.original_image_url(og) == (
         "https://static.bandainamcoent.eu/high/tekken/tekken-8/02-characters/new-gallery/Wide/Leroy-Smith_new.png")
+
+
+def test_period_rating_delta_ignores_rounding():
+    # wavu arrondit chaque gain : la somme (+10 +10 = +20) ne colle pas à l'écart réel (+19).
+    ms = [M("W", played_at="2026-11-23 10:00", rating=1510, rating_change=10),
+          M("W", played_at="2026-11-23 11:00", rating=1519, rating_change=10)]
+    assert stats.period_rating_delta(ms) == 19
+    assert stats.weekly(ms)[0]["rating_delta"] == 19
+    assert stats.sessions(ms)[0]["rating_delta"] == 19
+    assert stats.period_rating_delta([M("W")]) is None

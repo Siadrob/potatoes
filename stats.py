@@ -99,10 +99,9 @@ def sessions(matches, limit=10):
     out = []
     for day in sorted(days, reverse=True)[:limit]:
         ms = days[day]
-        changes = [m["rating_change"] for m in ms if m["rating_change"] is not None]
         out.append({"day": day, **_count(ms),
                     "chars": sorted({m["my_char"] for m in ms}),
-                    "rating_delta": sum(changes) if changes else None})
+                    "rating_delta": period_rating_delta(ms)})
     return out
 
 
@@ -220,6 +219,19 @@ def period_summary(matches, start, end=None):
     return _count(ms)
 
 
+def period_rating_delta(ms):
+    """Variation de rating sur un groupe de matchs : fin moins départ.
+
+    Le départ est le rating avant le premier match noté (son rating moins son gain).
+    Plus juste que la somme des gains, qui accumule les arrondis de wavu.
+    """
+    rated = [m for m in ms if m["rating"] is not None]
+    if not rated:
+        return None
+    start = rated[0]["rating"] - (rated[0]["rating_change"] or 0)
+    return rated[-1]["rating"] - start
+
+
 def weekly(matches, limit=8):
     """Bilan par semaine (lundi), de la plus récente à la plus ancienne."""
     from datetime import date, timedelta
@@ -231,11 +243,10 @@ def weekly(matches, limit=8):
     out = []
     for start in sorted(weeks, reverse=True)[:limit]:
         ms = weeks[start]
-        changes = [m["rating_change"] for m in ms if m["rating_change"] is not None]
         ratings = [m["rating"] for m in ms if m["rating"] is not None]
         ranks = [m["rank"] for m in ms if m["rank"]]
         out.append({"start": start, **_count(ms),
-                    "rating_delta": sum(changes) if changes else None,
+                    "rating_delta": period_rating_delta(ms),
                     "rating_end": ratings[-1] if ratings else None,
                     "rank": ranks[-1] if ranks else None})
     return out

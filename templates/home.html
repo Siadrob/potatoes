@@ -123,7 +123,7 @@
   <div class="card prog daily-mini">
     <div class="label">Défi du jour</div>
     <div class="kpi">🔥 {{ streak }}</div>
-    <div class="small muted">jour{{ 's' if streak > 1 }} d'affilée · {{ goals_open }} objectif{{ 's' if goals_open > 1 }} en cours</div>
+    <div class="small muted">jour{{ 's' if streak > 1 }} d'affilée · {{ goals_open }} objectif{{ 's' if goals_open > 1 }} dans <a href="{{ url_for('plan') }}">mon plan</a></div>
     {% if daily_done %}
       <a class="small" href="{{ url_for('training_hub', perso=char) }}">Défi fait ✓ · entraînement →</a>
     {% else %}
@@ -132,7 +132,7 @@
   </div>
 
   <div class="card prog">
-    <div class="label">Objectifs</div>
+    <div class="label">Rang et rating visés</div>
     {% if goal_rating or profile['goal_rank'] %}
       {% if goal_rating and rating %}
         <div class="goal">
@@ -148,7 +148,7 @@
         </div>
       {% endif %}
     {% else %}
-      <p class="small muted">Aucun objectif pour l'instant.</p>
+      <p class="small muted">Aucun rang ni rating visé pour l'instant.</p>
     {% endif %}
     <a class="small" href="{{ url_for('profile') }}">{{ 'Modifier' if goal_rating or profile['goal_rank'] else 'Fixer un objectif' }} →</a>
   </div>
