@@ -3,9 +3,8 @@ import pytest
 import stats
 import wavu
 from app import create_app
+from conftest import ME, login
 from db import get_db
-
-ME = "AAAAbbbbCCCC"
 
 WAVU_ROW = """
 <tr>
@@ -45,7 +44,7 @@ def app(tmp_path):
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    return login(app, app.test_client())
 
 
 # ---------- stats ----------
@@ -107,7 +106,7 @@ def test_parse_matches():
     assert first["played_at"] == "2026-11-22 20:56"
     assert (first["my_char"], first["opp_char"], first["opp_name"]) == ("Leroy", "Kazuya", "Rival")
     assert (first["result"], first["rounds_won"], first["rounds_lost"]) == ("W", 3, 1)
-    assert (first["rating"], first["rating_change"]) == (1900, 10)
+    assert (first["rating"], first["rating_change"]) == (1910, 10)  # rating après le match
     assert ms[1]["result"] == "L" and ms[1]["rating_change"] == -11
     assert ms[2]["result"] == "D"
     swapped = ms[3]
@@ -128,32 +127,32 @@ def test_import_route_is_idempotent(tmp_path):
                       "WAVU_FETCH": fake_fetch})
     client = app.test_client()
 
-    r = client.post("/import", data={"polaris_id": f"https://www.ewgf.gg/player/{ME}"},
+    r = client.post("/connexion", data={"polaris_id": f"https://www.ewgf.gg/player/{ME}"},
                     follow_redirects=True)
     assert "wavu : 3 matchs classés lus, 3 nouveaux" in r.get_data(as_text=True)
-    r = client.post("/import", data={"polaris_id": ME}, follow_redirects=True)
+    r = client.post("/import", follow_redirects=True)
     assert "wavu : 3 matchs classés lus, 0 nouveaux" in r.get_data(as_text=True)
     assert calls == [ME, ME]
 
     with app.app_context():
-        assert get_db().execute("SELECT COUNT(*) FROM matches").fetchone()[0] == 3
-        assert get_db().execute("SELECT polaris_id FROM profile").fetchone()[0] == ME
+        assert get_db().execute("SELECT COUNT(*) FROM matches WHERE player_id = ?", (ME,)).fetchone()[0] == 3
 
     # Un perso inconnu du roster apparaît quand même dans l'app.
     assert client.get("/matchups/Nouveau Perso").status_code == 200
     page = client.get("/").get_data(as_text=True)
-    assert "μ 1900" in page
+    assert "μ 1910" in page
 
 
-def test_import_rejects_bad_id(client):
-    r = client.post("/import", data={"polaris_id": "n'importe quoi"}, follow_redirects=True)
-    assert "ID joueur invalide" in r.get_data(as_text=True)
+def test_login_rejects_bad_id(app):
+    r = app.test_client().post("/connexion", data={"polaris_id": "n'importe quoi"})
+    assert r.status_code == 400 and "ID invalide" in r.get_data(as_text=True)
 
 
 # ---------- pages ----------
 
-def test_empty_dashboard(client):
-    r = client.get("/")
+def test_empty_pages(client):
+    assert "Importe tes matchs" in client.get("/").get_data(as_text=True)
+    r = client.get("/stats")
     assert r.status_code == 200
     assert "Aucun match" in r.get_data(as_text=True)
 
@@ -205,14 +204,13 @@ def test_matchup_notes(client):
 
 def test_profile(client):
     r = client.post("/profil", data={"name": "Sia", "mains": ["Bob", "Leroy"], "goal_rank": "Tekken King",
-                                     "goal_rating": "2000",
-                                     "polaris_id": "https://www.ewgf.gg/player/4qLJmf7THeE2"},
+                                     "goal_rating": "2000"},
                     follow_redirects=True)
-    assert "<h1>Sia</h1>" in r.get_data(as_text=True)
+    assert "Bienvenue Sia" in r.get_data(as_text=True)
     assert client.post("/profil", data={"goal_rating": "beaucoup"}).status_code == 400
 
 
-@pytest.mark.parametrize("url", ["/", "/matchs", "/matchups", "/import", "/profil",
+@pytest.mark.parametrize("url", ["/", "/stats", "/matchs", "/matchups", "/import", "/profil",
                                  "/matchs/nouveau", "/matchs?perso=Leroy&adversaire=Jin&page=2"])
 def test_pages_render(client, url):
     assert client.get(url).status_code == 200
@@ -249,18 +247,18 @@ def test_dashboard_focuses_on_mains(tmp_path):
     app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
                       "WAVU_FETCH": lambda pid: html})
     client = app.test_client()
-    client.post("/import", data={"polaris_id": ME})
+    client.post("/connexion", data={"polaris_id": ME})
     client.post("/profil", data={"name": "Sia", "mains": ["Bob", "Leroy"]})
 
-    page = client.get("/").get_data(as_text=True)
+    page = client.get("/stats").get_data(as_text=True)
     # Leroy (le plus joué) est sélectionné par défaut, puis Bob.
     assert '<h1 class="section-title">Leroy</h1>' in page
     assert page.index('class="chip-name">Leroy') < page.index('class="chip-name">Bob')
-    assert "μ 1430" in page
+    assert "μ 1422" in page
 
-    bob = client.get("/?perso=Bob").get_data(as_text=True)
+    bob = client.get("/stats?perso=Bob").get_data(as_text=True)
     assert '<h1 class="section-title">Bob</h1>' in bob
-    assert "Tous les persos</h1>" in client.get("/?perso=tous").get_data(as_text=True)
+    assert "Tous les persos</h1>" in client.get("/stats?perso=tous").get_data(as_text=True)
 
     day = client.get("/matchs?jour=2026-11-22&perso=Leroy").get_data(as_text=True)
     assert "2 matchs" in day
@@ -311,11 +309,11 @@ def test_import_merges_wavu_and_ewgf(tmp_path):
                       "WAVU_FETCH": lambda pid: html,
                       "EWGF_FETCH": lambda pid, key: battles, "EWGF_API_KEY": "ewgf_test"})
     client = app.test_client()
-    text = client.post("/import", data={"polaris_id": ME}, follow_redirects=True).get_data(as_text=True)
+    text = client.post("/connexion", data={"polaris_id": ME}, follow_redirects=True).get_data(as_text=True)
     assert "ewgf : 2 matchs classés lus (rangs Dan), 1 nouveaux" in text
     with app.app_context():
         rows = get_db().execute("SELECT rating, rank, opp_rank FROM matches ORDER BY played_at DESC").fetchall()
-    assert [tuple(r) for r in rows] == [(1900, "God of Destruction IV", "Tekken God"),
+    assert [tuple(r) for r in rows] == [(1910, "God of Destruction IV", "Tekken God"),
                                          (None, "God of Destruction IV", "Tekken God")]
     assert "God of Destruction IV" in client.get("/").get_data(as_text=True)
 
@@ -329,5 +327,128 @@ def test_ewgf_error_is_reported(tmp_path):
     app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
                       "WAVU_FETCH": lambda pid: wavu_page([]),
                       "EWGF_FETCH": failing, "EWGF_API_KEY": "ewgf_bad"})
-    text = app.test_client().post("/import", data={"polaris_id": ME}, follow_redirects=True).get_data(as_text=True)
+    client = login(app, app.test_client())
+    text = client.post("/import", follow_redirects=True).get_data(as_text=True)
     assert "invalid_api_key" in text
+
+
+# ---------- accueil / progression ----------
+
+def test_rating_delta_and_weekly():
+    pts = [{"date": "2026-11-01 10:00", "rating": 1500, "change": 10},
+           {"date": "2026-11-10 10:00", "rating": 1540, "change": 8},
+           {"date": "2026-11-20 10:00", "rating": 1520, "change": -9}]
+    assert stats.rating_delta(pts, "2026-11-15") == -20
+    assert stats.rating_delta(pts, "2026-10-01") == 30   # 1520 - (1500 - 10)
+    assert stats.daily_rating(pts + [{"date": "2026-11-20 22:00", "rating": 1530}])[-1] == \
+        {"date": "2026-11-20", "rating": 1530}
+    ms = [M("W", played_at="2026-11-16 10:00", rating=1500, rating_change=10),   # lundi
+          M("L", played_at="2026-11-22 10:00", rating=1490, rating_change=-10),  # dimanche
+          M("W", played_at="2026-11-23 10:00", rating=1501, rating_change=11)]   # lundi suivant
+    weeks = stats.weekly(ms)
+    assert [(w["start"], w["total"], w["rating_delta"], w["rating_end"]) for w in weeks] == \
+        [("2026-11-23", 1, 11, 1501), ("2026-11-16", 2, 0, 1490)]
+
+
+def test_home_shows_most_played_character(tmp_path):
+    html = wavu_page([row(1795380992, "3-1"), row(1795380900, "3-0", rating=1890),
+                      row(1795380800, "1-3", left_char="Bob", rating=1430, change="-8")])
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "PORTRAITS_DIR": str(tmp_path / "portraits"),
+                      "WAVU_FETCH": lambda pid: html})
+    client = app.test_client()
+    client.post("/connexion", data={"polaris_id": ME})
+    page = client.get("/").get_data(as_text=True)
+    assert '<h1 class="char-title">Leroy</h1>' in page
+    assert "μ 1910" in page and 'class="hero-ghost"' in page
+    bob = client.get("/?perso=Bob").get_data(as_text=True)
+    assert '<h1 class="char-title">Bob</h1>' in bob
+    assert client.get("/?perso=Kuma").status_code == 404
+
+
+def test_portrait_upload(tmp_path):
+    import io
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "PORTRAITS_DIR": str(tmp_path / "portraits")})
+    client = login(app, app.test_client())
+    png = b"\x89PNG\r\n\x1a\n" + b"\0" * 100
+
+    r = client.post("/portrait/Armor King", data={"image": (io.BytesIO(b"<script>"), "x.png")},
+                    content_type="multipart/form-data", follow_redirects=True)
+    assert "Format non reconnu" in r.get_data(as_text=True)
+    assert client.get("/portrait/Armor King").status_code == 404
+
+    client.post("/portrait/Armor King", data={"image": (io.BytesIO(png), "ak.png")},
+                content_type="multipart/form-data")
+    assert (tmp_path / "portraits" / "armor-king.png").exists()
+    r = client.get("/portrait/Armor King")
+    assert r.status_code == 200 and r.data == png
+
+    client.post("/portrait/Armor King/supprimer")
+    assert client.get("/portrait/Armor King").status_code == 404
+    assert client.post("/portrait/PasUnPerso", data={}).status_code == 404
+
+
+def test_portrait_from_url(tmp_path):
+    png = b"\x89PNG\r\n\x1a\n" + b"\1" * 50
+    seen = []
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "PORTRAITS_DIR": str(tmp_path / "portraits"),
+                      "PORTRAIT_DOWNLOAD": lambda url: seen.append(url) or png})
+    client = login(app, app.test_client())
+    client.post("/portrait/Leroy", data={"url": "https://exemple.org/leroy.png"})
+    assert seen == ["https://exemple.org/leroy.png"]
+    assert client.get("/portrait/Leroy").data == png
+    r = client.post("/portrait/Leroy", data={}, follow_redirects=True)
+    assert "Choisis une image" in r.get_data(as_text=True)
+
+
+def test_portrait_download_rejects_non_http():
+    import portraits
+    with pytest.raises(ValueError, match="http"):
+        portraits.download("file:///etc/passwd")
+
+
+def test_official_illustration_fetched_once(tmp_path):
+    png = b"\x89PNG\r\n\x1a\n" + b"\2" * 40
+    calls = []
+
+    def official(char):
+        calls.append(char)
+        if char == "Bob":
+            raise ValueError("introuvable")
+        return png
+
+    html = wavu_page([row(1795380992, "3-1"), row(1795380800, "1-3", left_char="Bob", change="-8")])
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "PORTRAITS_DIR": str(tmp_path / "portraits"),
+                      "WAVU_FETCH": lambda pid: html, "PORTRAIT_OFFICIAL": official})
+    client = app.test_client()
+    client.post("/connexion", data={"polaris_id": ME})
+
+    page = client.get("/?perso=Leroy").get_data(as_text=True)
+    assert 'class="hero-art"' in page
+    client.get("/?perso=Leroy")
+    assert client.get("/portrait/Leroy").data == png
+
+    assert 'class="hero-ghost"' in client.get("/?perso=Bob").get_data(as_text=True)
+    client.get("/?perso=Bob")           # l'échec est mémorisé : pas de nouvel essai
+    assert calls == ["Leroy", "Bob"]
+
+    r = client.post("/portrait/Bob/officiel", follow_redirects=True)   # nouvel essai manuel
+    assert "Impossible de récupérer" in r.get_data(as_text=True)
+    assert calls == ["Leroy", "Bob", "Bob"]
+
+
+def test_official_candidates():
+    import portraits
+    assert portraits.official_candidates("Leroy") == ["leroy-smith", "leroy"]
+    assert portraits.official_candidates("Armor King") == ["armor-king"]
+
+
+def test_original_image_url():
+    import portraits
+    og = ("https://static.bandainamcoent.eu/styles/og_image_1200x630/s3/high/tekken/tekken-8/"
+          "02-characters/new-gallery/Wide/Leroy-Smith_new.png?itok=uYR3mROF")
+    assert portraits.original_image_url(og) == (
+        "https://static.bandainamcoent.eu/high/tekken/tekken-8/02-characters/new-gallery/Wide/Leroy-Smith_new.png")

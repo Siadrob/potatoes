@@ -135,9 +135,22 @@ def parse_matches(html, polaris_id):
             "result": "W" if a > b else "L" if a < b else "D",
             "rounds_won": a,
             "rounds_lost": b,
-            "rating": left.get("rating"),
+            # wavu affiche le rating d'avant le match : on stocke celui d'après.
+            "rating": (left["rating"] + (left.get("change") or 0)
+                       if left.get("rating") is not None else None),
             "rating_change": left.get("change"),
             "source": "wavu",
             "external_id": f"battle:{row['battle_at']}:{right.get('id', '')}",
         })
     return matches
+
+
+def parse_player_name(html_text):
+    """Pseudo du joueur, lu dans le titre de la page ('PLS | Sia • Wavu Wank')."""
+    import html as html_lib
+
+    m = re.search(r"<title>(.*?)</title>", html_text or "", re.S)
+    if not m:
+        return None
+    name = html_lib.unescape(m.group(1)).split("•")[0].strip()
+    return name or None

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Mon plan{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Mon plan d'entraînement</h1>
+    <p class="muted small">Tes objectifs de progression : punitions à maîtriser, frames à connaître, matchups à remonter.</p>
+  </div>
+</div>
+
+<form method="post" class="card form plan-form">
+  <div class="row">
+    <label>Type
+      <select name="category">
+        {% for k, v in categories.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Perso adverse (facultatif)
+      <select name="opp_char">
+        <option value="">—</option>
+        {% for c in CHARACTERS %}<option>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <label>Objectif
+    <input type="text" name="title" maxlength="200" required placeholder="ex. Punir le df+2 de Kunimitsu avec df+2,1+2">
+  </label>
+  <label>Notes
+    <textarea name="notes" rows="2" placeholder="Comment tu comptes t'y prendre, ce que tu as remarqué…"></textarea>
+  </label>
+  <div class="actions"><button class="btn" type="submit">Ajouter au plan</button></div>
+</form>
+
+<div class="kanban">
+  {% for status, label in statuses.items() %}
+  <section class="card col-{{ status }}">
+    <div class="panel-title"><h2>{{ label }}</h2><span class="count">{{ columns[status]|length }}</span></div>
+    {% for g in columns[status] %}
+      <div class="goal-card">
+        <div class="goal-top">
+          <span class="tag tag-{{ g['category'] }}">{{ categories[g['category']] }}</span>
+          {% if g['opp_char'] %}<a class="small" href="{{ url_for('punish_page', adversaire=g['opp_char']) }}">{{ g['opp_char'] }}</a>{% endif %}
+        </div>
+        <div class="goal-title">{{ g['title'] }}</div>
+        {% if g['notes'] %}<div class="muted small">{{ g['notes'] }}</div>{% endif %}
+        <div class="goal-actions">
+          {% for s, l in statuses.items() if s != status %}
+          <form method="post" action="{{ url_for('plan_status', goal_id=g['id']) }}">
+            <input type="hidden" name="status" value="{{ s }}">
+            <button class="btn-mini" type="submit">{{ '✓ ' if s == 'done' }}{{ l }}</button>
+          </form>
+          {% endfor %}
+          <form method="post" action="{{ url_for('plan_delete', goal_id=g['id']) }}">
+            <button class="btn-mini danger-mini" type="submit" title="Supprimer">✕</button>
+          </form>
+        </div>
+        {% if g['done_at'] %}<div class="muted small">Acquis le {{ g['done_at'][:10] }}</div>{% endif %}
+      </div>
+    {% else %}<p class="muted small">Rien ici.</p>{% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

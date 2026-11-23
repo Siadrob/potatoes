@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Entraînement{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Entraînement{% if char %} · <span class="accent">{{ char }}</span>{% endif %}</h1>
+    <p class="muted small">Repère où tu perds des points, apprends les frames qui comptent, suis ton plan.</p>
+  </div>
+</div>
+
+<section class="train-top">
+  {# ---------- Défi du jour ---------- #}
+  <div class="card daily">
+    <div class="panel-title"><h2>Défi du jour</h2><span class="streak" title="Jours consécutifs">🔥 {{ streak }} jour{{ 's' if streak > 1 }}</span></div>
+    {% if daily and daily['completed_at'] %}
+      <div class="kpi {{ 'good' if daily_score[0] >= 7 else 'mid' if daily_score[0] >= 5 else 'bad' }}">{{ daily_score[0] }}/{{ daily_score[1] }}</div>
+      <p class="small muted">Défi terminé. Reviens demain pour garder ta série.</p>
+      <a class="btn ghost" href="{{ url_for('quiz_session', session_id=daily['id']) }}">Revoir les corrections</a>
+    {% else %}
+      <p>10 coups de <strong class="accent">{{ daily_opponent or 'un perso au hasard' }}</strong> :
+        devine leurs frames en garde.
+        {% if daily_opponent %}<span class="muted small">Chaque jour, un des persos qui t'ont le plus battu ce mois-ci.</span>{% endif %}
+      </p>
+      <form method="post" action="{{ url_for('daily_challenge', perso=char) }}">
+        <button class="btn" type="submit">{{ 'Reprendre le défi' if daily else 'Lancer le défi' }}</button>
+      </form>
+      <p class="small muted mt-s">Le premier lancement d'un perso télécharge ses frames : quelques secondes.</p>
+    {% endif %}
+  </div>
+
+  {# ---------- Outils ---------- #}
+  <div class="card">
+    <div class="panel-title"><h2>Travailler un perso</h2></div>
+    <form class="tool-form" method="get" action="{{ url_for('punish_page') }}">
+      <input type="hidden" name="perso" value="{{ char or '' }}">
+      <label>Adversaire
+        <select name="adversaire" required>
+          {% for c in opponents %}<option>{{ c }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn" type="submit">Fiche de punitions</button>
+      <button class="btn ghost" type="submit" formmethod="post" formaction="{{ url_for('free_quiz', perso=char) }}">Quiz sur ce perso</button>
+    </form>
+    <p class="small muted">La fiche liste ses coups punissables en garde et ton meilleur punish avec {{ char or 'ton perso' }}.</p>
+  </div>
+</section>
+
+{# ---------- Marges de progression ---------- #}
+<section class="card">
+  <div class="panel-title">
+    <div><h2>Marges de progression</h2>
+      <div class="muted small">60 derniers jours · matchups sous 50 % (5 matchs min.), classés par points de winrate à gagner</div></div>
+  </div>
+  {% if margins %}
+  <div class="table-wrap">
+  <table>
+    <tr><th>Adversaire</th><th>Bilan</th><th>Winrate</th><th title="Victoires qu'il t'aurait fallu pour être à 50 % dans ce matchup">Victoires à récupérer</th><th title="Points de winrate global gagnés si ce matchup remontait à 50 %">Gain global</th><th>Quiz</th><th></th></tr>
+    {% for m in margins %}
+    <tr>
+      <td><a href="{{ url_for('matchup_detail', char=m.opp_char) }}"><strong>{{ m.opp_char }}</strong></a></td>
+      <td class="nowrap"><span class="good">{{ m.wins }}V</span> / <span class="bad">{{ m.games - m.wins }}D</span></td>
+      <td class="bad">{{ m.winrate }} %</td>
+      <td><span class="gain">{{ m.missing_wins }}</span></td>
+      <td class="muted">+{{ '%.1f' % m.gain_pts }} pt</td>
+      <td class="nowrap">{% if m.quiz_total %}<span class="{{ 'good' if m.quiz_rate >= 70 else 'mid' if m.quiz_rate >= 50 else 'bad' }}">{{ m.quiz_rate|int }} %</span> <span class="muted small">({{ m.quiz_total }} q.)</span>{% else %}<span class="muted small">jamais testé</span>{% endif %}</td>
+      <td class="actions-cell">
+        <a class="icon-btn" href="{{ url_for('punish_page', adversaire=m.opp_char, perso=char) }}" title="Fiche de punitions {{ m.opp_char }}">🎯</a>
+        <form method="post" action="{{ url_for('free_quiz', perso=char) }}"><input type="hidden" name="adversaire" value="{{ m.opp_char }}"><button class="icon-btn" type="submit" title="Quiz sur {{ m.opp_char }}">❓</button></form>
+        <form method="post" action="{{ url_for('plan') }}">
+          <input type="hidden" name="category" value="matchup"><input type="hidden" name="opp_char" value="{{ m.opp_char }}">
+          <input type="hidden" name="title" value="Remonter le matchup {{ m.opp_char }} à 50 %">
+          <input type="hidden" name="next" value="{{ url_for('training_hub', perso=char) }}">
+          <button class="icon-btn" type="submit" title="Ajouter « remonter {{ m.opp_char }} à 50 % » à mon plan">＋</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}<p class="muted">Aucun matchup sous 50 % avec assez de matchs. Bravo, ou importe plus de matchs.</p>{% endif %}
+</section>
+
+<section class="grid2">
+  {# ---------- Connaissance ---------- #}
+  <div class="card">
+    <div class="panel-title"><h2>Connaissance des frames</h2><span class="muted small">taux de bonnes réponses</span></div>
+    {% for k in knowledge %}
+      <div class="know-row">
+        <span>{{ k.opp_char }}</span>
+        <div class="bar"><div style="width: {{ k.quiz_rate }}%"></div></div>
+        <span class="nowrap {{ 'good' if k.quiz_rate >= 70 else 'mid' if k.quiz_rate >= 50 else 'bad' }}">{{ k.quiz_rate|int }} %</span>
+      </div>
+    {% else %}<p class="muted small">Fais un défi ou un quiz pour mesurer ta connaissance des persos.</p>{% endfor %}
+  </div>
+
+  {# ---------- Plan ---------- #}
+  <div class="card">
+    <div class="panel-title"><h2>Mon plan</h2><a class="small" href="{{ url_for('plan') }}">Tout le plan →</a></div>
+    {% for g in goals %}
+      <div class="goal-row"><span class="tag tag-{{ g['category'] }}">{{ GOAL_CATEGORIES[g['category']] }}</span>
+        <span>{{ g['title'] }}</span><span class="muted small">{{ GOAL_STATUSES[g['status']] }}</span></div>
+    {% else %}<p class="muted small">Pas encore d'objectif. Ajoute-en depuis les marges de progression ou une fiche de punitions.</p>{% endfor %}
+  </div>
+</section>
+
+<p class="muted small center-link">Frame data : <a href="https://wavu.wiki" target="_blank" rel="noopener">Wavu Wiki</a> (comme tekkendocs.com), mise en cache 14 jours. Punisseurs calculés automatiquement : vérifie-les en training mode.</p>
+{% endblock %}

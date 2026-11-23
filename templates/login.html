@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<section class="login">
+  <div class="login-card card">
+    <div class="eyebrow">Tekken 8 · suivi de progression</div>
+    <h1>Entre ton ID Tekken</h1>
+    <p class="muted">Le site va chercher tout seul tes matchs classés, ton rating, tes rangs
+      et tes persos, puis construit ta page de progression.</p>
+    <form method="post" id="loginForm">
+      <label for="pid" class="label">ID joueur ou URL de ton profil ewgf.gg</label>
+      <input id="pid" type="text" name="polaris_id" value="{{ value }}" required autofocus
+             autocomplete="off" spellcheck="false" placeholder="4qLJmf7THeE2">
+      <button class="btn login-btn" type="submit">C'est parti</button>
+    </form>
+    <p class="loading small muted" hidden>⏳ Récupération de tes matchs… quelques secondes.</p>
+    <details class="small muted help">
+      <summary>Où trouver mon ID ?</summary>
+      <p>Dans le jeu : Profil joueur, ligne « ID Tekken » (12 caractères, ex. <span class="mono">4qLJ-mf7T-HeE2</span>,
+        les tirets sont facultatifs). Ou cherche ton pseudo sur <a href="https://www.ewgf.gg" target="_blank" rel="noopener">ewgf.gg</a>
+        et colle l'adresse de ta page.</p>
+    </details>
+  </div>
+</section>
+<script>
+  document.getElementById('loginForm').addEventListener('submit', e => {
+    e.target.querySelector('button').disabled = true;
+    document.querySelector('.loading').hidden = false;
+  });
+</script>
+{% endblock %}

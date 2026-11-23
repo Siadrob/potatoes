@@ -10,15 +10,28 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="{{ url_for('dashboard') }}">T8 <span>Tracker</span></a>
+    <a class="brand" href="{{ url_for('home') }}">T8 <span>Tracker</span></a>
+    {% if profile %}
     <nav>
-      <a href="{{ url_for('dashboard') }}">Tableau de bord</a>
+      <a href="{{ url_for('home') }}">Accueil</a>
+      <a href="{{ url_for('dashboard') }}">Statistiques</a>
+      <a href="{{ url_for('training_hub') }}">Entraînement</a>
+      <a href="{{ url_for('plan') }}">Mon plan</a>
       <a href="{{ url_for('match_list') }}">Matchs</a>
       <a href="{{ url_for('matchups') }}">Matchups</a>
-      <a href="{{ url_for('import_page') }}">Importer</a>
-      <a href="{{ url_for('profile') }}">Profil</a>
       <a class="btn" href="{{ url_for('match_new') }}">+ Match</a>
     </nav>
+    <details class="player-menu">
+      <summary><span class="player-dot">{{ profile['name'][:1]|upper }}</span>{{ profile['name'] }}</summary>
+      <div class="player-pop">
+        <div class="muted small mono">{{ profile['polaris_id'] }}</div>
+        {% if profile['last_import_at'] %}<div class="muted small">Mis à jour : {{ profile['last_import_at'][:16] }} UTC</div>{% endif %}
+        <form method="post" action="{{ url_for('import_page') }}"><button class="btn-mini" type="submit">↻ Actualiser mes matchs</button></form>
+        <a class="btn-mini" href="{{ url_for('profile') }}">Profil et objectifs</a>
+        <form method="post" action="{{ url_for('logout') }}"><button class="btn-mini" type="submit">Changer de joueur</button></form>
+      </div>
+    </details>
+    {% endif %}
   </header>
 
   <main>

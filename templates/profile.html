@@ -7,13 +7,14 @@
     <label>Pseudo
       <input type="text" name="name" value="{{ profile['name'] }}">
     </label>
-    <label>ID joueur Tekken (ou URL ewgf.gg)
-      <input type="text" name="polaris_id" value="{{ profile['polaris_id'] or '' }}" placeholder="ex. 4qLJmf7THeE2">
+    <label>ID joueur Tekken
+      <input type="text" value="{{ profile['polaris_id'] }}" readonly>
+      <span class="small">Pour utiliser un autre ID : menu du joueur › Changer de joueur.</span>
     </label>
   </div>
   {% set my_mains = (profile['mains'] or '').split(',') %}
   <fieldset class="mains-pick">
-    <legend>Mes mains <span class="muted small">(mis en avant sur le tableau de bord, le plus joué en premier)</span></legend>
+    <legend>Mes mains <span class="muted small">(si tu n'en coches aucun, ce sont tes 2 persos les plus joués)</span></legend>
     {% for c in CHARACTERS %}
     <label class="pick"><input type="checkbox" name="mains" value="{{ c }}" {{ 'checked' if c in my_mains }}> {{ c }}</label>
     {% endfor %}

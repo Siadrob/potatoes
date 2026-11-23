@@ -87,7 +87,7 @@ def rank_history(matches):
 
 def rating_history(matches, char):
     """Points (date, rating) pour un personnage (le rating est propre à chaque perso)."""
-    return [{"date": m["played_at"], "rating": m["rating"]}
+    return [{"date": m["played_at"], "rating": m["rating"], "change": m["rating_change"]}
             for m in matches if m["my_char"] == char and m["rating"] is not None]
 
 
@@ -185,3 +185,57 @@ def matchup_chart(matches, min_games=3):
         r["cls"] = wr_class(r["winrate"])
     hidden = sum(1 for r in by_key(matches, "opp_char") if r["total"] < min_games)
     return sorted(rows, key=lambda r: (-r["winrate"], -r["total"])), hidden
+
+
+# ---------- Progression (page d'accueil) ----------
+
+def rating_delta(points, since):
+    """Évolution du rating depuis la date `since` ('AAAA-MM-JJ').
+
+    Référence = dernier rating connu avant `since` ; à défaut, le rating avant le
+    premier match de la période (premier rating moins son gain).
+    """
+    if not points:
+        return None
+    before = [p for p in points if p["date"][:10] < since]
+    if before:
+        ref = before[-1]["rating"]
+    else:
+        first = points[0]
+        ref = first["rating"] - (first.get("change") or 0)
+    return points[-1]["rating"] - ref
+
+
+def daily_rating(points):
+    """Rating en fin de journée : une valeur par jour joué, courbe moins bruitée."""
+    days = {}
+    for p in points:
+        days[p["date"][:10]] = p["rating"]
+    return [{"date": d, "rating": r} for d, r in days.items()]
+
+
+def period_summary(matches, start, end=None):
+    """Bilan des matchs joués entre `start` inclus et `end` exclu (dates ISO)."""
+    ms = [m for m in matches if m["played_at"][:10] >= start and (end is None or m["played_at"][:10] < end)]
+    return _count(ms)
+
+
+def weekly(matches, limit=8):
+    """Bilan par semaine (lundi), de la plus récente à la plus ancienne."""
+    from datetime import date, timedelta
+
+    weeks = defaultdict(list)
+    for m in matches:
+        d = date.fromisoformat(m["played_at"][:10])
+        weeks[(d - timedelta(days=d.weekday())).isoformat()].append(m)
+    out = []
+    for start in sorted(weeks, reverse=True)[:limit]:
+        ms = weeks[start]
+        changes = [m["rating_change"] for m in ms if m["rating_change"] is not None]
+        ratings = [m["rating"] for m in ms if m["rating"] is not None]
+        ranks = [m["rank"] for m in ms if m["rank"]]
+        out.append({"start": start, **_count(ms),
+                    "rating_delta": sum(changes) if changes else None,
+                    "rating_end": ratings[-1] if ratings else None,
+                    "rank": ranks[-1] if ranks else None})
+    return out

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Défi du jour' if session['mode'] == 'daily' else 'Quiz' }}{% endblock %}
+{% block content %}
+{% set done = session['completed_at'] is not none %}
+{% set opps = questions|map(attribute='opp_char')|unique|list %}
+
+<div class="quiz-wrap">
+  <div class="quiz-title">
+    <div>
+      <div class="eyebrow">{{ 'Défi du jour' if session['mode'] == 'daily' else 'Quiz libre' }} · {{ session['day'] }}</div>
+      <h1>{{ opps|join(', ') }}</h1>
+    </div>
+    <div class="muted small right">Tu joues {{ session['my_char'] or '—' }}<br>punissable = −10 ou moins</div>
+  </div>
+
+{% if not done %}
+  {# ---------- Une question à la fois ---------- #}
+  <div class="quiz-progress"><div id="quizBar" style="width: 0%"></div></div>
+
+  {% for q in questions %}
+  <section class="card qcard" data-index="{{ loop.index0 }}" data-expected="{{ q.expected }}" {{ 'hidden' if not loop.first }}>
+    <div class="qcard-head">
+      <strong>{{ q.opp_char }} : <span class="mono accent">{{ q.command }}</span></strong>
+      <span class="muted">Question {{ loop.index }} / {{ questions|length }}</span>
+    </div>
+
+    <div class="move-media">
+      {% if q.video %}
+        <video src="{{ q.video }}" muted loop playsinline preload="{{ 'auto' if loop.index0 < 2 else 'metadata' }}"></video>
+      {% else %}
+        <div class="no-video"><span class="mono">{{ q.command }}</span><span class="small muted">Pas de vidéo pour ce coup</span></div>
+      {% endif %}
+    </div>
+
+    <p class="q-text">Combien de frames en garde pour <strong class="mono">{{ q.command }}</strong> ?</p>
+    <p class="muted small q-meta">{% if q.name %}{{ q.name }} · {% endif %}niveau {{ q.target }}{% if q.startup %} · i{{ q.startup }}{% endif %}</p>
+
+    <div class="pills">
+      {% for c in q.choices %}
+      <button type="button" class="pill-choice" data-value="{{ c }}"><kbd>{{ loop.index }}</kbd>{{ c }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="explain" hidden>
+      <div class="verdict"></div>
+      <p><strong class="mono">{{ '%+d' % q.block }}</strong> en garde{% if q.punishable %} : <span class="bad">punissable</span>{% endif %}.
+        {% if q.punisher %}
+          Ton punish{% if q.punish_kind == 'ws' %} en te relevant (c'est un low){% endif %} :
+          <strong class="mono accent">{{ q.punisher.command }}</strong>
+          <span class="muted">(i{{ q.punisher.startup }}, {{ q.punisher.damage }} dégâts{% if q.punisher.launcher %}, lanceur{% endif %})</span>
+        {% elif q.punishable %}<span class="muted">Pas de punisseur trouvé pour ton perso.</span>{% endif %}
+      </p>
+      <div class="qcard-foot">
+        <button type="button" class="btn-mini add-plan"
+                data-category="{{ 'punish' if q.punishable else 'knowledge' }}" data-opp="{{ q.opp_char }}"
+                data-title="{{ q.opp_char }} {{ q.command }} ({{ '%+d' % q.block }}){% if q.punisher %} → punir avec {{ q.punisher.command }}{% endif %}">+ Plan</button>
+        <button type="button" class="btn next">{{ 'Question suivante →' if not loop.last else 'Voir mon score' }}</button>
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+
+  <form id="quizForm" method="post" hidden>
+    {% for q in questions %}<input type="hidden" name="q{{ loop.index0 }}" value="">{% endfor %}
+  </form>
+
+  <script>
+    (() => {
+      const cards = [...document.querySelectorAll('.qcard')];
+      const form = document.getElementById('quizForm');
+      const bar = document.getElementById('quizBar');
+      let current = 0;
+
+      function show(i) {
+        cards.forEach((c, j) => {
+          c.hidden = j !== i;
+          const v = c.querySelector('video');
+          if (v) { if (j === i) v.play().catch(() => {}); else v.pause(); }
+        });
+        // Précharge la vidéo suivante.
+        const next = cards[i + 1] && cards[i + 1].querySelector('video');
+        if (next) next.preload = 'auto';
+        bar.style.width = (100 * i / cards.length) + '%';
+      }
+
+      function answer(card, value) {
+        if (card.dataset.answered) return;
+        card.dataset.answered = '1';
+        const ok = value === card.dataset.expected;
+        form.elements['q' + card.dataset.index].value = value;
+        card.classList.add(ok ? 'ok' : 'ko');
+        card.querySelectorAll('.pill-choice').forEach(b => {
+          b.disabled = true;
+          if (b.dataset.value === card.dataset.expected) b.classList.add('right');
+          else if (b.dataset.value === value) b.classList.add('wrong');
+        });
+        const ex = card.querySelector('.explain');
+        ex.querySelector('.verdict').textContent = ok ? '✓ Bonne réponse' : '✗ Raté : c’était « ' + card.dataset.expected + ' »';
+        ex.querySelector('.verdict').className = 'verdict ' + (ok ? 'good' : 'bad');
+        ex.hidden = false;
+        ex.querySelector('.next').focus();
+      }
+
+      function next() {
+        if (current + 1 < cards.length) { current += 1; show(current); }
+        else { bar.style.width = '100%'; form.submit(); }
+      }
+
+      cards.forEach(card => {
+        card.querySelectorAll('.pill-choice').forEach(b => b.addEventListener('click', () => answer(card, b.dataset.value)));
+        card.querySelector('.next').addEventListener('click', next);
+        card.querySelector('.add-plan').addEventListener('click', async e => {
+          const btn = e.currentTarget, d = btn.dataset;
+          const body = new URLSearchParams({ category: d.category, opp_char: d.opp, title: d.title, next: '/plan' });
+          btn.disabled = true;
+          try { await fetch('{{ url_for('plan') }}', { method: 'POST', body }); btn.textContent = '✓ Ajouté au plan'; }
+          catch { btn.disabled = false; }
+        });
+      });
+
+      // Clavier : 1 à 5 pour répondre, Entrée pour continuer.
+      document.addEventListener('keydown', e => {
+        const card = cards[current];
+        if (!card || e.target.closest('input, textarea, select')) return;
+        const n = parseInt(e.key, 10);
+        const pills = card.querySelectorAll('.pill-choice');
+        if (n >= 1 && n <= pills.length && !card.dataset.answered) answer(card, pills[n - 1].dataset.value);
+        else if (e.key === 'Enter' && card.dataset.answered) { e.preventDefault(); next(); }
+      });
+
+      show(0);
+    })();
+  </script>
+
+{% else %}
+  {# ---------- Résultat ---------- #}
+  <section class="card result-head">
+    <div class="score-big {{ 'good' if score >= 7 else 'mid' if score >= 5 else 'bad' }}">{{ score }}/{{ questions|length }}</div>
+    <div>
+      <div class="kpi small-kpi">{{ 'Excellent !' if score >= 9 else 'Bien joué' if score >= 7 else 'Pas mal' if score >= 5 else 'À retravailler' }}</div>
+      <p class="muted small">Ajoute au plan les coups ratés pour les revoir.</p>
+    </div>
+    <a class="btn" href="{{ url_for('training_hub') }}">Retour à l'entraînement</a>
+  </section>
+
+  <section class="card">
+    {% for q in questions %}
+    {% set a = answers.get(loop.index0) %}
+    <div class="result-row {{ 'ok' if a and a['correct'] else 'ko' }}">
+      <span class="result-mark">{{ '✓' if a and a['correct'] else '✗' }}</span>
+      <div class="result-move">
+        <span class="mono accent">{{ q.command }}</span> <span class="muted small">{{ q.opp_char }}{% if q.name %} · {{ q.name }}{% endif %}</span>
+        <div class="small">
+          <strong class="mono">{{ '%+d' % q.block }}</strong>
+          {% if a and not a['correct'] %}<span class="muted"> · tu as répondu {{ a['given'] or '—' }}</span>{% endif %}
+          {% if q.punisher %} · punish <span class="mono">{{ q.punisher.command }}</span>{% endif %}
+        </div>
+      </div>
+      {% if q.video %}<video class="result-video" src="{{ q.video }}" muted loop playsinline preload="none"
+             onmouseenter="this.play()" onmouseleave="this.pause()"></video>{% endif %}
+      <form method="post" action="{{ url_for('plan') }}">
+        <input type="hidden" name="category" value="{{ 'punish' if q.punishable else 'knowledge' }}">
+        <input type="hidden" name="opp_char" value="{{ q.opp_char }}">
+        <input type="hidden" name="title" value="{{ q.opp_char }} {{ q.command }} ({{ '%+d' % q.block }}){% if q.punisher %} → punir avec {{ q.punisher.command }}{% endif %}">
+        <input type="hidden" name="next" value="{{ url_for('quiz_session', session_id=session['id']) }}">
+        <button class="btn-mini" type="submit">+ Plan</button>
+      </form>
+    </div>
+    {% endfor %}
+  </section>
+{% endif %}
+</div>
+{% endblock %}

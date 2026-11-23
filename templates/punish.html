@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Punitions{% if opp %} · {{ opp }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fiche de punitions{% if opp %} · <span class="accent">{{ opp }}</span>{% endif %}</h1>
+    <p class="muted small">Coups de {{ opp or "l'adversaire" }} à −10 ou moins en garde, et ton meilleur punish avec <strong>{{ char or '—' }}</strong>.</p>
+    {% if opp %}
+    <form method="post" action="{{ url_for('free_quiz', perso=char) }}" class="mt-s">
+      <input type="hidden" name="adversaire" value="{{ opp }}">
+      <button class="btn" type="submit">❓ Quiz sur {{ opp }}</button>
+    </form>
+    {% endif %}
+  </div>
+  <form class="filter" method="get">
+    <input type="hidden" name="perso" value="{{ char or '' }}">
+    <label>Adversaire
+      <select name="adversaire" onchange="this.form.submit()">
+        <option value="">—</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == opp }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+</div>
+
+{% if opp and not groups %}
+  <p class="muted">Aucun coup punissable trouvé (ou frame data indisponible).</p>
+{% endif %}
+
+{% for label, rows in groups %}
+<section class="card table-wrap">
+  <div class="panel-title"><h2>{{ label }}</h2><span class="count">{{ rows|length }}</span></div>
+  <table>
+    <tr><th>Coup</th><th>Niveau</th><th>En garde</th><th>Ton punish</th><th>Dégâts</th><th>Notes</th><th></th></tr>
+    {% for r in rows %}
+    {% set title = opp ~ ' ' ~ r.command ~ ' (' ~ ('%+d' % r.block) ~ ')' ~ ((' → punir avec ' ~ r.punisher) if r.punisher else '') %}
+    <tr>
+      <td class="nowrap"><span class="mono">{{ r.command }}</span>{% if r.name %}<div class="muted small">{{ r.name }}</div>{% endif %}</td>
+      <td class="small">{{ r.target }}</td>
+      <td class="bad mono">{{ '%+d' % r.block }}</td>
+      <td class="nowrap">
+        {% if r.punisher %}
+          <span class="mono accent">{{ r.punisher }}</span>
+          <span class="muted small">i{{ r.punisher_startup }}{% if r.punish_kind == 'ws' %} · ws{% endif %}</span>
+          {% if r.punisher_launcher %}<span class="tag tag-punish">lanceur</span>{% endif %}
+        {% else %}<span class="muted small">—</span>{% endif %}
+      </td>
+      <td>{{ r.punisher_damage or '' }}</td>
+      <td class="notes small">{{ r.notes[:140] }}{{ '…' if r.notes|length > 140 }}</td>
+      <td>
+        {% if title in planned %}<span class="small good">✓ au plan</span>
+        {% else %}
+        <form method="post" action="{{ url_for('plan') }}">
+          <input type="hidden" name="category" value="punish"><input type="hidden" name="opp_char" value="{{ opp }}">
+          <input type="hidden" name="title" value="{{ title }}">
+          <input type="hidden" name="next" value="{{ url_for('punish_page', adversaire=opp, perso=char) }}">
+          <button class="btn-mini" type="submit">+ Plan</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endfor %}
+
+<p class="muted small center-link">Frame data : <a href="https://wavu.wiki" target="_blank" rel="noopener">Wavu Wiki</a>.
+  Pour un low (niveau « l »), le punish se fait en se relevant (ws). Punisseurs calculés automatiquement : vérifie-les en training mode.</p>
+{% endblock %}
