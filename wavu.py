@@ -154,3 +154,9 @@ def parse_player_name(html_text):
         return None
     name = html_lib.unescape(m.group(1)).split("•")[0].strip()
     return name or None
+
+
+def parse_steam_id(html_text):
+    """Identifiant Steam (17 chiffres) affiché sur la page joueur, s'il y en a un."""
+    m = re.search(r"https://steamcommunity\.com/profiles/(\d{17})", html_text or "")
+    return m.group(1) if m else None

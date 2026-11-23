@@ -494,3 +494,10 @@ button.icon-btn { font-weight: 700; }
 @media (max-width: 640px) {
   .w-s, .w-m, .w-l { grid-column: span 12; }
 }
+
+/* ---------- Liens externes (Steam, ewgf, wavu) ---------- */
+.ext-links { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ext-link { font-size: .72rem; font-weight: 600; padding: .12rem .5rem; border-radius: 999px; color: var(--muted);
+  border: 1px solid var(--border); background: rgba(16, 20, 29, .55); }
+.ext-link:hover { color: var(--text); border-color: var(--accent); text-decoration: none; }
+.hero-links { margin: .35rem 0 0; }

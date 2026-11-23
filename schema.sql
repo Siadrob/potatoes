@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS players (
     goal_rank TEXT,
     goal_rating INTEGER,
     layout TEXT,                         -- disposition des widgets de l'accueil (JSON)
+    steam_id TEXT,                       -- profil Steam (lu sur wavu)
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_import_at TEXT
 );

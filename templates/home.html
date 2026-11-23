@@ -22,6 +22,9 @@
 
   <div class="hero-body">
     <div class="eyebrow">{{ profile['name'] }} · {{ summary.total }} matchs classés</div>
+    <div class="ext-links hero-links">
+      {% for label, href in profile_links(profile) %}<a class="ext-link" href="{{ href }}" target="_blank" rel="noopener">{{ label }} ↗</a>{% endfor %}
+    </div>
     <h1 class="char-title">{{ char }}</h1>
     {% if rank %}<div class="rank-line">{{ rank }}</div>{% endif %}
 

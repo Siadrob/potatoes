@@ -107,7 +107,7 @@ def create_app(test_config=None):
             return url_for("punish_page", adversaire=char, **args)
 
         return {"CHARACTERS": all_characters(), "RANKS": RANKS, "profile": get_profile(),
-                "matches_pages": enabled, "opp_link": opp_link}
+                "matches_pages": enabled, "opp_link": opp_link, "profile_links": profile_links}
 
     def refresh_player(pid, html=None, quiet=False):
         """Va chercher tout ce qu'on peut savoir du joueur : matchs, rating, rangs Dan.
@@ -122,6 +122,9 @@ def create_app(test_config=None):
             except (urllib.error.URLError, TimeoutError) as e:
                 flash(f"wavu : impossible de joindre wank.wavu.wiki ({e}).", "error")
         if html is not None:
+            steam_id = wavu.parse_steam_id(html)
+            if steam_id:
+                db.execute("UPDATE players SET steam_id = ? WHERE polaris_id = ?", (steam_id, pid))
             found = wavu.parse_matches(html, pid)
             added = save_imported(db, found, pid)
             added_total += added
@@ -822,6 +825,19 @@ def get_profile():
 
 def player_id():
     return g.player["polaris_id"]
+
+
+def profile_links(player):
+    """Liens externes vers les profils du joueur (Steam si connu, ewgf.gg, wavu)."""
+    if player is None:
+        return []
+    links = []
+    if player["steam_id"]:
+        links.append(("Steam", f"https://steamcommunity.com/profiles/{player['steam_id']}"))
+    pid = player["polaris_id"]
+    links.append(("ewgf.gg", f"https://www.ewgf.gg/player/{pid}"))
+    links.append(("wavu", f"https://wank.wavu.wiki/player/{pid}"))
+    return links
 
 
 def player_layout():

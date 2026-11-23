@@ -28,6 +28,9 @@
       <div class="player-pop">
         <div class="muted small mono">{{ profile['polaris_id'] }}</div>
         {% if profile['last_import_at'] %}<div class="muted small">Mis à jour : {{ profile['last_import_at'][:16] }} UTC</div>{% endif %}
+        <div class="ext-links">
+          {% for label, href in profile_links(profile) %}<a class="ext-link" href="{{ href }}" target="_blank" rel="noopener">{{ label }} ↗</a>{% endfor %}
+        </div>
         <form method="post" action="{{ url_for('import_page') }}"><button class="btn-mini" type="submit">↻ Actualiser mes matchs</button></form>
         <a class="btn-mini" href="{{ url_for('profile') }}">Profil et objectifs</a>
         <form method="post" action="{{ url_for('logout') }}"><button class="btn-mini" type="submit">Changer de joueur</button></form>

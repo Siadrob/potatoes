@@ -169,3 +169,15 @@ def test_orphan_data_adopted_by_first_player(tmp_path, make_app):
     app.test_client().post("/connexion", data={"polaris_id": ME})
     with app.app_context():
         assert get_db().execute("SELECT COUNT(*) FROM matches WHERE player_id IS NULL").fetchone()[0] == 0
+
+
+def test_steam_and_profile_links(make_app):
+    html = page_with_title([row(1795380992, "3-1")]).replace(
+        "<body>", '<body><a href="https://steamcommunity.com/profiles/76561198018579450">7656…</a>')
+    app = make_app(WAVU_FETCH=lambda pid: html)
+    client = app.test_client()
+    page = client.post("/connexion", data={"polaris_id": ME}, follow_redirects=True).get_data(as_text=True)
+    assert "https://steamcommunity.com/profiles/76561198018579450" in page
+    assert f"https://www.ewgf.gg/player/{ME}" in page and f"https://wank.wavu.wiki/player/{ME}" in page
+    import wavu
+    assert wavu.parse_steam_id("rien ici") is None
