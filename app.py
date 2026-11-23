@@ -68,6 +68,7 @@ def create_app(test_config=None):
 
     init_db(app.config["DATABASE"])
     app.teardown_appcontext(close_db)
+    app.jinja_env.globals["okizeme_url"] = framedata.okizeme_url
 
     @app.before_request
     def load_player():

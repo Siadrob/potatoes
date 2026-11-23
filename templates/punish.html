@@ -6,10 +6,13 @@
     <h1>Fiche de punitions{% if opp %} · <span class="accent">{{ opp }}</span>{% endif %}</h1>
     <p class="muted small">Coups de {{ opp or "l'adversaire" }} à −10 ou moins en garde, et ton meilleur punish avec <strong>{{ char or '—' }}</strong>.</p>
     {% if opp %}
-    <form method="post" action="{{ url_for('free_quiz', perso=char) }}" class="mt-s">
-      <input type="hidden" name="adversaire" value="{{ opp }}">
-      <button class="btn" type="submit">❓ Quiz sur {{ opp }}</button>
-    </form>
+    <div class="actions mt-s">
+      <form method="post" action="{{ url_for('free_quiz', perso=char) }}">
+        <input type="hidden" name="adversaire" value="{{ opp }}">
+        <button class="btn" type="submit">❓ Quiz sur {{ opp }}</button>
+      </form>
+      <a class="btn ghost" href="{{ okizeme_url(opp) }}" target="_blank" rel="noopener">▶ Vidéos des coups de {{ opp }} (okizeme.gg)</a>
+    </div>
     {% endif %}
   </div>
   <form class="filter" method="get">
@@ -64,6 +67,6 @@
 </section>
 {% endfor %}
 
-<p class="muted small center-link">Frame data : <a href="https://wavu.wiki" target="_blank" rel="noopener">Wavu Wiki</a>.
+<p class="muted small center-link">Frame data : <a href="https://wavu.wiki" target="_blank" rel="noopener">Wavu Wiki</a> · vidéos : <a href="https://okizeme.gg" target="_blank" rel="noopener">okizeme.gg</a>.
   Pour un low (niveau « l »), le punish se fait en se relevant (ws). Punisseurs calculés automatiquement : vérifie-les en training mode.</p>
 {% endblock %}

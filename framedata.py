@@ -252,3 +252,18 @@ def punish_sheet(opp_df, my_df):
     sheet["punisher_damage"] = [b["damage"] if b else None for b in best]
     sheet["punisher_launcher"] = [bool(b and b["launcher"]) for b in best]
     return sheet.sort_values(["block", "command"]).reset_index(drop=True)
+
+
+# ---------- Liens externes ----------
+
+OKIZEME_SLUGS = {"Roger": "roger-jr"}
+
+
+def okizeme_url(char):
+    """Page du perso sur okizeme.gg (vidéos de tous les coups), ouverte dans le navigateur.
+
+    On ne fait que pointer vers le site : ses vidéos passent par une API privée
+    que son robots.txt exclut des accès automatisés.
+    """
+    slug = OKIZEME_SLUGS.get(char) or re.sub(r"[^a-z0-9]+", "-", char.lower()).strip("-")
+    return f"https://okizeme.gg/database/{slug}"

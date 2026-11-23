@@ -392,6 +392,7 @@ a.active { font-weight: 700; }
 .no-video { height: 100%; display: grid; place-content: center; text-align: center; gap: .4rem;
   background: radial-gradient(circle at 50% 40%, rgba(139, 123, 255, .18), transparent 60%); }
 .no-video .mono { font-size: clamp(2rem, 7vw, 3.4rem); color: var(--accent); }
+.no-video .btn-mini { justify-self: center; font-size: .85rem; padding: .35rem .8rem; }
 .q-text { font-size: 1.05rem; margin: 1rem 0 .15rem; }
 .q-meta { margin: 0 0 .8rem; }
 .pills { display: flex; flex-wrap: wrap; gap: .5rem; }

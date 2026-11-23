@@ -220,3 +220,14 @@ def test_outdated_daily_is_regenerated(client):
     with client.app.app_context():
         rows = get_db().execute("SELECT questions FROM quiz_sessions WHERE mode = 'daily'").fetchall()
     assert len(rows) == 1 and json.loads(rows[0][0])[0]["kind"] == "bracket"
+
+
+def test_okizeme_links(client):
+    assert fd.okizeme_url("Fahkumram") == "https://okizeme.gg/database/fahkumram"
+    assert fd.okizeme_url("Armor King") == "https://okizeme.gg/database/armor-king"
+    assert fd.okizeme_url("Roger") == "https://okizeme.gg/database/roger-jr"
+    page = client.get("/entrainement/punitions?adversaire=King&perso=Leroy").get_data(as_text=True)
+    assert "https://okizeme.gg/database/king" in page
+    loc = client.post("/entrainement/libre", data={"adversaire": "Jin"}).headers["Location"]
+    quiz = client.get(loc).get_data(as_text=True)           # Jin n'a pas de vidéo dans FAKE
+    assert "Voir le coup sur okizeme.gg" in quiz and "https://okizeme.gg/database/jin" in quiz

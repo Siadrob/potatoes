@@ -28,7 +28,11 @@
       {% if q.video %}
         <video src="{{ q.video }}" muted loop playsinline preload="{{ 'auto' if loop.index0 < 2 else 'metadata' }}"></video>
       {% else %}
-        <div class="no-video"><span class="mono">{{ q.command }}</span><span class="small muted">Pas de vidéo pour ce coup</span></div>
+        <div class="no-video">
+          <span class="mono">{{ q.command }}</span>
+          <a class="btn-mini" href="{{ okizeme_url(q.opp_char) }}" target="_blank" rel="noopener">▶ Voir le coup sur okizeme.gg</a>
+          <span class="small muted">Pas encore de vidéo sur le wiki Wavu pour ce coup.</span>
+        </div>
       {% endif %}
     </div>
 
@@ -157,7 +161,9 @@
         </div>
       </div>
       {% if q.video %}<video class="result-video" src="{{ q.video }}" muted loop playsinline preload="none"
-             onmouseenter="this.play()" onmouseleave="this.pause()"></video>{% endif %}
+             onmouseenter="this.play()" onmouseleave="this.pause()"></video>
+      {% else %}<a class="icon-btn" href="{{ okizeme_url(q.opp_char) }}" target="_blank" rel="noopener"
+             title="Voir {{ q.command }} sur okizeme.gg">▶</a>{% endif %}
       <form method="post" action="{{ url_for('plan') }}">
         <input type="hidden" name="category" value="{{ 'punish' if q.punishable else 'knowledge' }}">
         <input type="hidden" name="opp_char" value="{{ q.opp_char }}">
