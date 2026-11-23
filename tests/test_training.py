@@ -231,3 +231,81 @@ def test_okizeme_links(client):
     loc = client.post("/entrainement/libre", data={"adversaire": "Jin"}).headers["Location"]
     quiz = client.get(loc).get_data(as_text=True)           # Jin n'a pas de vidéo dans FAKE
     assert "Voir le coup sur okizeme.gg" in quiz and "https://okizeme.gg/database/jin" in quiz
+
+
+# ---------- neutre / stances / positions ----------
+
+STANCE_MOVES = OPP_MOVES + [
+    mv("King", "JGR.1", "m", 14, "-13"),          # stance Jaguar Run
+    mv("King", "JGR.2", "h", 12, "-4"),
+    mv("King", "BT.2", "h", 10, "-12"),           # dos tourné
+    mv("King", "SS.3", "m", 16, "-6"),            # pas de côté
+    mv("King", "H.2+3", "m", 15, "-15"),          # Heat
+    mv("King", "OTG.3", "l", 20, "-20"),          # adversaire au sol : situation, hors quiz
+]
+
+
+def test_move_context():
+    assert fd.move_context("df+1") == ("neutral", "En neutre")
+    assert fd.move_context("f,F+2")[0] == "neutral"
+    assert fd.move_context("ws2") == ("position", "En se relevant (ws)")
+    assert fd.move_context("HRM.1") == ("stance", "Stance Hermit (HRM)")
+    assert fd.move_context("KAT.3") == ("stance", "Stance KAT")          # nom inconnu : abréviation
+    assert fd.move_context("BT.3")[0] == "position"
+    assert fd.move_context("H.2+3") == ("power", "Heat")
+    assert fd.move_context("OTG.d+3")[0] == "situation"
+
+
+def test_quiz_modes():
+    frames = {"King": fd.to_frame(STANCE_MOVES, "King")}
+    pun = fd.punishers(fd.to_frame(ME_MOVES, "Leroy"))
+    neutral = training.make_questions(frames, pun, seed=1, mode="neutral")
+    assert neutral and all(q["context_kind"] == "neutral" for q in neutral)
+    stances = training.make_questions(frames, pun, seed=1, mode="stances")
+    assert stances and all(q["context_kind"] in ("position", "stance", "power") for q in stances)
+    assert {q["command"] for q in stances} <= {"JGR.1", "JGR.2", "BT.2", "SS.3", "H.2+3"}
+    for seed in range(5):
+        mixed = training.make_questions(frames, pun, seed=seed)
+        assert all(q["command"] != "OTG.3" for q in mixed)               # jamais de situation
+        assert sum(q["context_kind"] == "neutral" for q in mixed) >= len(mixed) // 2
+    # Sur beaucoup de tirages, environ 80 % de coups en neutre.
+    total = [q["context_kind"] == "neutral" for s in range(40)
+             for q in training.make_questions(frames, pun, seed=s)]
+    assert 0.65 <= sum(total) / len(total) <= 0.95
+
+
+def test_punish_sheet_sections(tmp_path, monkeypatch):
+    monkeypatch.setattr(training, "today", lambda: date(2026, 11, 23))
+    fake = dict(FAKE, King=STANCE_MOVES)
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "FRAMEDATA_FETCH": lambda c: fake.get(c, [])})
+    with app.app_context():
+        get_db().execute("INSERT INTO matches (player_id, played_at, my_char, opp_char, result) "
+                         "VALUES (?, '2026-11-20', 'Leroy', 'King', 'L')", (ME,))
+        get_db().commit()
+    client = login(app, app.test_client())
+    html = client.get("/entrainement/punitions?adversaire=King&perso=Leroy").get_data(as_text=True)
+    neutral_part, stance_part = html.split("Stances, positions et Heat")
+    assert "f+2" in neutral_part and "JGR.1" not in neutral_part and "BT.2" not in neutral_part
+    assert "Jaguar Run (JGR)" in stance_part and "Stance Jaguar Run" not in stance_part   # pas de doublon
+    assert "Dos tourné (BT)" in stance_part and "Heat" in stance_part
+    assert stance_part.index("Dos tourné") < stance_part.index("Jaguar Run") < stance_part.index("ctx-power")
+    loc = client.post("/entrainement/libre", data={"adversaire": "King", "mode": "stances"}).headers["Location"]
+    quiz = client.get(loc).get_data(as_text=True)
+    assert "Stance Jaguar Run (JGR)" in quiz or "Dos tourné (BT)" in quiz or "Heat" in quiz
+    assert client.post("/entrainement/libre", data={"adversaire": "King", "mode": "nimp"}).status_code == 400
+
+
+def test_daily_without_context_is_regenerated(client):
+    old = [{"kind": "bracket", "opp_char": "King", "move_id": "King-f+2", "command": "f+2", "name": "",
+            "target": "h", "startup": 14, "block": -17, "punishable": True, "punisher": None,
+            "punish_kind": "standing", "choices": ["x"], "expected": "x"}]
+    with client.app.app_context():
+        db = get_db()
+        db.execute("INSERT INTO quiz_sessions (player_id, mode, day, my_char, questions) "
+                   "VALUES (?, 'daily', '2026-11-23', 'Leroy', ?)", (ME, json.dumps(old)))
+        db.commit()
+    client.post("/entrainement/defi")
+    with client.app.app_context():
+        rows = get_db().execute("SELECT questions FROM quiz_sessions WHERE mode = 'daily'").fetchall()
+    assert len(rows) == 1 and all("context_kind" in q for q in json.loads(rows[0][0]))

@@ -750,7 +750,7 @@ def create_app(test_config=None):
             "JOIN quiz_sessions s ON s.id = a.session_id WHERE s.player_id = ?",
             get_db(), params=(player_id(),))
 
-    def create_session(mode, my_char, opponents, seed):
+    def create_session(mode, my_char, opponents, seed, quiz_mode="mix"):
         my_df = frames(my_char) if my_char else None
         my_pun = framedata.punishers(my_df) if my_df is not None else framedata.punishers(pd.DataFrame())
         by_opp = {}
@@ -758,7 +758,7 @@ def create_app(test_config=None):
             df = frames(opp)
             if df is not None and not df.empty:
                 by_opp[opp] = df
-        questions = training.make_questions(by_opp, my_pun, seed)
+        questions = training.make_questions(by_opp, my_pun, seed, mode=quiz_mode)
         if not questions:
             return None
         cur = get_db().execute(
@@ -807,7 +807,8 @@ def create_app(test_config=None):
         row = db.execute("SELECT * FROM quiz_sessions WHERE mode = 'daily' AND day = ? "
                          "AND player_id = ?", (today.isoformat(), player_id())).fetchone()
         if row:
-            outdated = any(q.get("kind") != "bracket" for q in json.loads(row["questions"]))
+            outdated = any(q.get("kind") != "bracket" or "context_kind" not in q
+                           for q in json.loads(row["questions"]))
             if row["completed_at"] or not outdated:
                 return redirect(url_for("quiz_session", session_id=row["id"]))
             # Défi pas commencé, créé par une version précédente : on le régénère.
@@ -827,9 +828,10 @@ def create_app(test_config=None):
     @app.post("/entrainement/libre")
     def free_quiz():
         opp = request.form.get("adversaire")
-        if opp not in all_characters():
+        quiz_mode = request.form.get("mode", "mix")
+        if opp not in all_characters() or quiz_mode not in training.QUIZ_MODES:
             abort(400)
-        session_id = create_session("libre", training_char(), [opp], random.randrange(10**9))
+        session_id = create_session("libre", training_char(), [opp], random.randrange(10**9), quiz_mode)
         if session_id is None:
             flash(f"Impossible de préparer un quiz sur {opp}.", "error")
             return redirect(url_for("training_hub"))
@@ -866,23 +868,30 @@ def create_app(test_config=None):
     def punish_page():
         char = training_char()
         opp = request.args.get("adversaire")
-        sheet, groups = None, []
+        sheet, groups, context_groups = None, [], []
         if opp:
             if opp not in all_characters():
                 abort(404)
             opp_df, my_df = frames(opp), frames(char) if char else None
             if opp_df is not None and my_df is not None:
                 sheet = framedata.punish_sheet(opp_df, my_df)
+                # En neutre : par fenêtre de punition ; le reste : une section par stance / position.
+                neutral = sheet[sheet["context_kind"] == "neutral"]
                 windows = [("10 à 12 frames", 10, 12), ("13 à 14 frames", 13, 14),
                            ("15 frames et plus : punition lourde", 15, 999)]
                 for label, lo, hi in windows:
-                    part = sheet[(sheet["frames"] >= lo) & (sheet["frames"] <= hi)]
+                    part = neutral[(neutral["frames"] >= lo) & (neutral["frames"] <= hi)]
                     if not part.empty:
                         groups.append((label, part.to_dict("records")))
+                others = sheet[sheet["context_kind"] != "neutral"]
+                for (_rank, context, kind), part in others.groupby(
+                        ["context_rank", "context", "context_kind"], sort=True):
+                    context_groups.append((context, kind, part.to_dict("records")))
         planned = {r[0] for r in get_db().execute(
             "SELECT title FROM training_goals WHERE category = 'punish' AND opp_char = ? "
             "AND player_id = ?", (opp, player_id()))}
         return render_template("punish.html", char=char, opp=opp, groups=groups,
+                               context_groups=context_groups, quiz_modes=training.QUIZ_MODES,
                                total=0 if sheet is None else len(sheet), planned=planned)
 
     # ---------- Plan d'entraînement ----------

@@ -1,38 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Punitions{% if opp %} · {{ opp }}{% endif %}{% endblock %}
-{% block content %}
-<div class="page-head">
-  <div>
-    <h1>Fiche de punitions{% if opp %} · <span class="accent">{{ opp }}</span>{% endif %}</h1>
-    <p class="muted small">Coups de {{ opp or "l'adversaire" }} à −10 ou moins en garde, et ton meilleur punish avec <strong>{{ char or '—' }}</strong>.</p>
-    {% if opp %}
-    <div class="actions mt-s">
-      <form method="post" action="{{ url_for('free_quiz', perso=char) }}">
-        <input type="hidden" name="adversaire" value="{{ opp }}">
-        <button class="btn" type="submit">❓ Quiz sur {{ opp }}</button>
-      </form>
-      <a class="btn ghost" href="{{ okizeme_url(opp) }}" target="_blank" rel="noopener">▶ Vidéos des coups de {{ opp }} (okizeme.gg)</a>
-    </div>
-    {% endif %}
-  </div>
-  <form class="filter" method="get">
-    <input type="hidden" name="perso" value="{{ char or '' }}">
-    <label>Adversaire
-      <select name="adversaire" onchange="this.form.submit()">
-        <option value="">—</option>
-        {% for c in CHARACTERS %}<option {{ 'selected' if c == opp }}>{{ c }}</option>{% endfor %}
-      </select>
-    </label>
-  </form>
-</div>
 
-{% if opp and not groups %}
-  <p class="muted">Aucun coup punissable trouvé (ou frame data indisponible).</p>
-{% endif %}
-
-{% for label, rows in groups %}
-<section class="card table-wrap">
-  <div class="panel-title"><h2>{{ label }}</h2><span class="count">{{ rows|length }}</span></div>
+{% macro moves_table(rows) %}
   <table>
     <tr><th>Coup</th><th>Niveau</th><th>En garde</th><th>Ton punish</th><th>Dégâts</th><th>Notes</th><th></th></tr>
     {% for r in rows %}
@@ -64,8 +33,65 @@
     </tr>
     {% endfor %}
   </table>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fiche de punitions{% if opp %} · <span class="accent">{{ opp }}</span>{% endif %}</h1>
+    <p class="muted small">Coups de {{ opp or "l'adversaire" }} à −10 ou moins en garde, et ton meilleur punish avec <strong>{{ char or '—' }}</strong>.</p>
+    {% if opp %}
+    <div class="actions mt-s">
+      <form method="post" action="{{ url_for('free_quiz', perso=char) }}" class="quiz-launch">
+        <input type="hidden" name="adversaire" value="{{ opp }}">
+        <select name="mode" aria-label="Type de coups">
+          {% for value, label in quiz_modes.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <button class="btn" type="submit">❓ Quiz sur {{ opp }}</button>
+      </form>
+      <a class="btn ghost" href="{{ okizeme_url(opp) }}" target="_blank" rel="noopener">▶ Vidéos des coups de {{ opp }} (okizeme.gg)</a>
+    </div>
+    {% endif %}
+  </div>
+  <form class="filter" method="get">
+    <input type="hidden" name="perso" value="{{ char or '' }}">
+    <label>Adversaire
+      <select name="adversaire" onchange="this.form.submit()">
+        <option value="">—</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == opp }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+</div>
+
+{% if opp and not groups and not context_groups %}
+  <p class="muted">Aucun coup punissable trouvé (ou frame data indisponible).</p>
+{% endif %}
+
+{% if groups %}
+<h2 class="section-head">En neutre <span class="muted small">· debout, en garde : les coups à connaître en priorité</span></h2>
+{% for label, rows in groups %}
+<section class="card table-wrap">
+  <div class="panel-title"><h2>{{ label }}</h2><span class="count">{{ rows|length }}</span></div>
+  {{ moves_table(rows) }}
 </section>
 {% endfor %}
+{% endif %}
+
+{% if context_groups %}
+<h2 class="section-head">Stances, positions et Heat
+  <span class="muted small">· coups qui ne sortent que depuis une stance ou une position particulière</span></h2>
+{% for context, kind, rows in context_groups %}
+<details class="card table-wrap ctx-section">
+  <summary class="panel-title">
+    <h2><span class="ctx ctx-{{ kind }}">{{ {'position': 'Position', 'stance': 'Stance', 'power': 'Heat / Rage', 'situation': 'Situation'}[kind] }}</span>
+      {{ context[7:] if kind == 'stance' and context.startswith('Stance ') else context }}</h2>
+    <span class="count">{{ rows|length }}</span>
+  </summary>
+  {{ moves_table(rows) }}
+</details>
+{% endfor %}
+{% endif %}
 
 <p class="muted small center-link">Frame data : <a href="https://wavu.wiki" target="_blank" rel="noopener">Wavu Wiki</a> · vidéos : <a href="https://okizeme.gg" target="_blank" rel="noopener">okizeme.gg</a>.
   Pour un low (niveau « l »), le punish se fait en se relevant (ws). Punisseurs calculés automatiquement : vérifie-les en training mode.</p>

@@ -38,6 +38,12 @@
           {% for c in opponents %}<option>{{ c }}</option>{% endfor %}
         </select>
       </label>
+      <label>Coups du quiz
+        <select name="mode">
+          <option value="mix">Mélange</option><option value="neutral">En neutre</option>
+          <option value="stances">Stances et positions</option>
+        </select>
+      </label>
       <button class="btn" type="submit">Fiche de punitions</button>
       <button class="btn ghost" type="submit" formmethod="post" formaction="{{ url_for('free_quiz', perso=char) }}">Quiz sur ce perso</button>
     </form>

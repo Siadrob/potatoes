@@ -186,6 +186,55 @@ def load(conn, char, fetch=fetch_raw, max_age_days=CACHE_DAYS, force=False):
     return df
 
 
+# ---------- Contexte d'un coup : neutre, position, stance, Heat/Rage, situation ----------
+
+# Positions communes à tous les persos (notation du wiki Wavu).
+POSITIONS = {"ws": "En se relevant (ws)", "WS": "En se relevant (ws)", "FC": "Accroupi (FC)",
+             "hFC": "Mi-accroupi (hFC)", "SS": "Pas de côté (SS)", "BT": "Dos tourné (BT)",
+             "CD": "Crouch dash (CD)"}
+POWER = {"H": "Heat", "R": "Rage"}
+# Situations particulières : adversaire au sol, en l'air, au mur, contre…
+SITUATIONS = {"OTG", "AIR", "WALL", "Behind", "CH", "P", "FUFT", "FUFA", "FUFL", "FDFA", "FDFL",
+              "FDFR", "FDFT"}
+# Noms complets des stances dont on est sûr ; sinon on affiche l'abréviation du wiki.
+STANCE_NAMES = {"HRM": "Hermit", "FLK": "Flicker", "DCK": "Duck", "PAB": "Peekaboo", "SWY": "Sway",
+                "LWV": "Weave gauche", "RWV": "Weave droit", "LNH": "Lionheart",
+                "LFS": "Flamingo gauche", "RFS": "Flamingo droit", "RFF": "Pied droit devant",
+                "JGR": "Jaguar Run", "JGS": "Jaguar Step"}
+CONTEXT_ORDER = {"neutral": 0, "position": 1, "stance": 2, "power": 3, "situation": 4}
+
+
+def move_context(command):
+    """(type, libellé) d'un coup selon sa position de départ.
+
+    'neutral' : debout en garde ; 'position' : état commun (ws, FC, SS, BT…) ;
+    'stance' : stance propre au perso (HRM, FLK…) ; 'power' : Heat / Rage ;
+    'situation' : cas particulier (au sol, en l'air, au mur…).
+    """
+    m = re.match(r"^([A-Za-z]+)\.", command or "")
+    if not m:
+        if re.match(r"^ws\d", command or "", re.IGNORECASE):
+            return "position", POSITIONS["ws"]
+        return "neutral", "En neutre"
+    code = m.group(1)
+    if code in POSITIONS:
+        return "position", POSITIONS[code]
+    if code in POWER:
+        return "power", POWER[code]
+    if code in SITUATIONS:
+        return "situation", f"Situation particulière ({code})"
+    name = STANCE_NAMES.get(code)
+    return "stance", f"Stance {name} ({code})" if name else f"Stance {code}"
+
+
+def add_context(df):
+    out = df.copy()
+    ctx = out["command"].map(move_context)
+    out["context_kind"] = ctx.map(lambda c: c[0])
+    out["context"] = ctx.map(lambda c: c[1])
+    return out
+
+
 # ---------- Punitions ----------
 
 _STANDING = re.compile(r"^(?:(?:f|b|df|uf)\+)?[1-4](?:\+[1-4])*(?:,[1-4](?:\+[1-4])*)*$")
@@ -251,7 +300,11 @@ def punish_sheet(opp_df, my_df):
     sheet["punisher_startup"] = [b["startup"] if b else None for b in best]
     sheet["punisher_damage"] = [b["damage"] if b else None for b in best]
     sheet["punisher_launcher"] = [bool(b and b["launcher"]) for b in best]
-    return sheet.sort_values(["block", "command"]).reset_index(drop=True)
+    sheet = add_context(sheet)
+    sheet["context_rank"] = sheet["context_kind"].map(CONTEXT_ORDER)
+    # Coups simples d'abord, puis chaînes de plus en plus longues (rarement bloquées jusqu'au bout).
+    sheet["depth"] = sheet["command"].str.count(",")
+    return sheet.sort_values(["context_rank", "context", "depth", "block", "command"]).reset_index(drop=True)
 
 
 # ---------- Liens externes ----------

@@ -81,23 +81,34 @@ def daily_opponents(matches, since, limit=5):
 
 # ---------- Génération des questions ----------
 
-def question_pool(df):
-    """Coups utilisables en quiz : frames en garde connues, pas de chope, pas de fin de longue chaîne."""
+QUIZ_MODES = {"mix": "Mélange", "neutral": "En neutre", "stances": "Stances et positions"}
+NEUTRAL_SHARE = 0.8   # en mode « mélange », part des coups en neutre
+
+
+def question_pool(df, mode="mix"):
+    """Coups utilisables en quiz : frames en garde connues, pas de chope, pas de fin de longue chaîne,
+    pas de situation particulière (adversaire au sol, au mur…)."""
     if df.empty:
         return df
-    pool = df[df["block"].notna() & ~df["last_level"].isin(["t", ""])
-              & (df["block"] >= -25) & (df["block"] <= 8)]
-    return pool[pool["command"].str.count(",") <= 1]
+    pool = fd.add_context(df)
+    pool = pool[pool["block"].notna() & ~pool["last_level"].isin(["t", ""])
+                & (pool["block"] >= -25) & (pool["block"] <= 8)
+                & (pool["command"].str.count(",") <= 1) & (pool["context_kind"] != "situation")]
+    if mode == "neutral":
+        pool = pool[pool["context_kind"] == "neutral"]
+    elif mode == "stances":
+        pool = pool[pool["context_kind"] != "neutral"]
+    return pool
 
 
-def make_questions(frames_by_opp, my_punishers, seed, size=QUIZ_SIZE):
+def make_questions(frames_by_opp, my_punishers, seed, size=QUIZ_SIZE, mode="mix"):
     """`frames_by_opp` : {perso: DataFrame}. Retourne une liste de questions (dicts JSON).
 
     Chaque question tire d'abord une tranche au hasard puis un coup de cette tranche,
     pour ne pas tomber sans arrêt sur « 0 à −9 ».
     """
     rng = random.Random(seed)
-    pools = {c: question_pool(df) for c, df in frames_by_opp.items()}
+    pools = {c: question_pool(df, mode) for c, df in frames_by_opp.items()}
     pools = {c: p.assign(bracket=p["block"].astype(int).map(bracket)) for c, p in pools.items() if not p.empty}
     if not pools:
         return []
@@ -110,12 +121,17 @@ def make_questions(frames_by_opp, my_punishers, seed, size=QUIZ_SIZE):
         pool = pools[char][~pools[char]["move_id"].isin(used)]
         if pool.empty:
             continue
+        # Mélange : on choisit d'abord neutre (4 fois sur 5) ou stance / position, puis la
+        # tranche de frames parmi ces coups-là (sinon les persos à stances fausseraient le dosage).
+        if mode == "mix":
+            neutral = pool[pool["context_kind"] == "neutral"]
+            others = pool[pool["context_kind"] != "neutral"]
+            if not neutral.empty and (others.empty or rng.random() < NEUTRAL_SHARE):
+                pool = neutral
+            elif not others.empty:
+                pool = others
         available = [b for b, *_ in BRACKETS if (pool["bracket"] == b).any()]
         pool = pool[pool["bracket"] == rng.choice(available)]
-        # Coups de base (hors stance « XXX. ») 4 fois sur 5, et ceux qui ont une vidéo d'abord.
-        basic = pool[~pool["command"].str.contains(".", regex=False)]
-        if not basic.empty and rng.random() < 0.8:
-            pool = basic
         with_video = pool[pool["video_url"].notna() & (pool["video_url"] != "")] \
             if "video_url" in pool else pool.iloc[0:0]
         if not with_video.empty and rng.random() < 0.85:
@@ -146,6 +162,8 @@ def build_question(char, move, my_punishers):
                      if best else None),
         "punish_kind": punish_kind,
         "video": video if isinstance(video, str) and video else None,
+        "context_kind": move.get("context_kind", "neutral") if hasattr(move, "get") else "neutral",
+        "context": move.get("context", "En neutre") if hasattr(move, "get") else "En neutre",
         "choices": [label for label, *_ in BRACKETS],
         "expected": bracket(block),
     }

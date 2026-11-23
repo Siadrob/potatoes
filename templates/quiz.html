@@ -36,6 +36,7 @@
       {% endif %}
     </div>
 
+    {% if q.context %}<div class="q-ctx"><span class="ctx ctx-{{ q.context_kind }}">{{ q.context }}</span></div>{% endif %}
     <p class="q-text">Combien de frames en garde pour <strong class="mono">{{ q.command }}</strong> ?</p>
     <p class="muted small q-meta">{% if q.name %}{{ q.name }} · {% endif %}niveau {{ q.target }}{% if q.startup %} · i{{ q.startup }}{% endif %}</p>
 
@@ -154,6 +155,7 @@
       <span class="result-mark">{{ '✓' if a and a['correct'] else '✗' }}</span>
       <div class="result-move">
         <span class="mono accent">{{ q.command }}</span> <span class="muted small">{{ q.opp_char }}{% if q.name %} · {{ q.name }}{% endif %}</span>
+        {% if q.context and q.context_kind != 'neutral' %}<span class="ctx ctx-{{ q.context_kind }}">{{ q.context }}</span>{% endif %}
         <div class="small">
           <strong class="mono">{{ '%+d' % q.block }}</strong>
           {% if a and not a['correct'] %}<span class="muted"> · tu as répondu {{ a['given'] or '—' }}</span>{% endif %}

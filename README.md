@@ -23,10 +23,13 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   évolution des placements, derniers sets, adversaires, bilan winners / losers, tournois
   à venir. Widgets personnalisables comme l'accueil.
 - **Entraînement** :
-  - *défi du jour* : 10 coups d'un perso qui te bat souvent, avec la vidéo du coup
+  - *défi du jour* : 10 coups d'un perso qui te bat souvent (environ 80 % en neutre, le reste
+    en stance ou position, toujours indiquée), avec la vidéo du coup
     (ou un lien vers okizeme.gg quand elle manque), à classer par frames en garde,
     et une série de jours consécutifs ;
-  - *fiches de punitions* : coups adverses à −10 ou moins et ton meilleur punish ;
+  - *fiches de punitions* : coups adverses à −10 ou moins et ton meilleur punish, d'abord
+    en neutre (par fenêtre de punition), puis par stance, position (dos tourné, pas de côté,
+    accroupi…) et Heat / Rage ;
   - *marges de progression* : matchups qui te coûtent le plus de victoires ;
   - *plan d'entraînement* : tes objectifs à faire, en cours, acquis.
 - *En pause* : liste des matchs, saisie manuelle et notes par matchup. Réactivables avec

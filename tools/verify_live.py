@@ -216,6 +216,16 @@ def verify(profile, app):
     check(tag, f"défi du jour : punitions issues des coups de {main}", not bad, str(bad))
     punish = client.get(f"/entrainement/punitions?adversaire={losers.most_common(1)[0][0] if losers else 'King'}&perso={main}")
     check(tag, "fiche de punitions", punish.status_code == 200 and "10 à 12 frames" in punish.get_data(as_text=True))
+    # Neutre et stances séparés : aucun coup de stance/position dans la partie « En neutre »
+    for opp in ("Hwoarang", "Steve"):
+        html = client.get(f"/entrainement/punitions?adversaire={opp}&perso={main}").get_data(as_text=True)
+        neutral_part = html.split("Stances, positions et Heat")[0]
+        cmds = re.findall(r'<span class="mono">([^<]+)</span>', neutral_part)
+        stray = [c for c in cmds if re.match(r"^[A-Za-z]+\.", c) or c.lower().startswith("ws")]
+        check(tag, f"punitions {opp} : partie neutre sans coup de stance ({len(cmds)} coups)", cmds and not stray, str(stray[:5]))
+        check(tag, f"punitions {opp} : sections de stances présentes", "ctx-stance" in html)
+    neutral_q = sum(q.get("context_kind") == "neutral" for q in qs)
+    check(tag, f"défi du jour : majorité de coups en neutre ({neutral_q}/{len(qs)})", qs and neutral_q >= len(qs) // 2)
 
     # Tournois (on part d'un compte non lié, quel que soit l'état de la base copiée)
     if not (CFG.get("STARTGG_TOKEN") and profile.get("startgg")):
