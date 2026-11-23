@@ -8,7 +8,7 @@
     <h1>Bienvenue {{ profile['name'] }}</h1>
     <p>Importe tes matchs classés pour voir ta progression.</p>
     <p><a class="btn" href="{{ url_for('import_page') }}">Importer mes matchs</a>
-       ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>.</p>
+       {% if matches_pages %}ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>{% endif %}</p>
   </div>
 {% else %}
 
@@ -188,7 +188,7 @@
         <div class="label bad">À travailler</div>
         {% for r in to_work %}
         <div class="focus-item">
-          <a class="focus-row" href="{{ url_for('matchup_detail', char=r.name) }}">
+          <a class="focus-row" href="{{ opp_link(r.name, perso=char) }}">
             <span>{{ r.name }}</span><span class="muted small">{{ r.wins }}V-{{ r.losses }}D</span><strong class="{{ wr_class(r.winrate) }}">{{ r.winrate|round|int }} %</strong>
           </a>
           <a class="icon-btn" href="{{ url_for('punish_page', adversaire=r.name, perso=char) }}"
@@ -199,13 +199,13 @@
       <div>
         <div class="label good">Points forts</div>
         {% for r in strengths %}
-        <a class="focus-row" href="{{ url_for('matchup_detail', char=r.name) }}">
+        <a class="focus-row" href="{{ opp_link(r.name, perso=char) }}">
           <span>{{ r.name }}</span><span class="muted small">{{ r.wins }}V-{{ r.losses }}D</span><strong class="{{ wr_class(r.winrate) }}">{{ r.winrate|round|int }} %</strong>
         </a>
         {% else %}<p class="muted small">Pas assez de matchs.</p>{% endfor %}
       </div>
     </div>
-    <p class="small muted">🎯 = réviser ce perso (punitions + quiz) ·
+    <p class="small muted">Clique sur un perso pour le réviser (punitions + quiz) ·
       <a href="{{ url_for('training_hub', perso=char) }}">toutes mes marges de progression →</a></p>
   </div>
 </section>

@@ -20,7 +20,8 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   - *fiches de punitions* : coups adverses à −10 ou moins et ton meilleur punish ;
   - *marges de progression* : matchups qui te coûtent le plus de victoires ;
   - *plan d'entraînement* : tes objectifs à faire, en cours, acquis.
-- **Saisie manuelle** de matchs et **notes** par matchup.
+- *En pause* : liste des matchs, saisie manuelle et notes par matchup. Réactivables avec
+  `ENABLE_MATCHES_PAGES = True` dans `instance/config.py`.
 
 ## Démarrage rapide
 

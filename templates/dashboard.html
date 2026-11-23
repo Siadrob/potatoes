@@ -37,7 +37,7 @@
   <div class="card empty">
     <p>Aucun match enregistré pour l'instant.</p>
     <p><a class="btn" href="{{ url_for('import_page') }}">Importer mes matchs classés</a>
-       ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>.</p>
+       {% if matches_pages %}ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>{% endif %}</p>
   </div>
 {% else %}
 
@@ -115,7 +115,7 @@
 
       {# ---------- Activité ---------- #}
       <section class="card">
-        <div class="panel-title"><h2>Activité récente</h2><span class="muted small">13 semaines · clique sur un jour</span></div>
+        <div class="panel-title"><h2>Activité récente</h2><span class="muted small">13 semaines{% if matches_pages %} · clique sur un jour{% endif %}</span></div>
         <div class="heat-wrap">
           <div class="heat-days"><span></span><span>Lun</span><span></span><span>Mer</span><span></span><span>Ven</span><span></span><span></span></div>
           <div class="heat">
@@ -124,8 +124,10 @@
               <span class="heat-month">{{ MONTHS[col.month|int - 1] if col.month else '' }}</span>
               {% for cell in col.cells %}
                 {% if cell.future %}<span class="cell future"></span>
-                {% elif cell.total %}<a class="cell {{ cell.cls }}" href="{{ url_for('match_list', jour=cell.day, perso=selected) }}"
+                {% elif cell.total and matches_pages %}<a class="cell {{ cell.cls }}" href="{{ url_for('match_list', jour=cell.day, perso=selected) }}"
                    title="{{ cell.day }} : {{ cell.wins }}V-{{ cell.losses }}D ({{ cell.winrate }} %)"></a>
+                {% elif cell.total %}<span class="cell {{ cell.cls }}"
+                   title="{{ cell.day }} : {{ cell.wins }}V-{{ cell.losses }}D ({{ cell.winrate }} %)"></span>
                 {% else %}<span class="cell h0" title="{{ cell.day }} : aucun match"></span>{% endif %}
               {% endfor %}
             </div>
@@ -150,7 +152,7 @@
       <div class="panel-title"><h2>Adversaires les plus rencontrés</h2></div>
       <div class="opp-grid">
         {% for o in opponents %}
-        <a class="opp-row" href="{{ url_for('matchup_detail', char=o.name) }}">
+        <a class="opp-row" href="{{ opp_link(o.name, perso=selected) }}">
           <div class="char-head"><span class="char-name">{{ o.name }}</span><span class="wr {{ wr_class(o.winrate) }}">{{ o.winrate }} %</span></div>
           {{ wlbar(o.wins, o.total) }}
           <div class="char-foot"><span><span class="good">{{ o.wins }}V</span> / <span class="bad">{{ o.losses }}D</span></span><span class="muted">{{ o.total }} matchs</span></div>
@@ -175,7 +177,7 @@
         <div class="mu-chart" style="--n: {{ chart|length }}">
           <div class="mu-fifty"><span>50 %</span></div>
           {% for r in chart %}
-          <a class="mu-col" href="{{ url_for('matchup_detail', char=r.name) }}"
+          <a class="mu-col" href="{{ opp_link(r.name, perso=selected) }}"
              title="{{ r.name }} : {{ r.wins }}V-{{ r.losses }}D ({{ r.total }} matchs)"
              data-wr="{{ r.winrate }}" data-n="{{ r.total }}" data-max="{{ max_n }}">
             <span class="mu-plot">
@@ -195,12 +197,12 @@
 
     {# ---------- Sessions ---------- #}
     <section class="card table-wrap">
-      <div class="panel-title"><h2>Sessions récentes</h2><a class="small" href="{{ url_for('match_list', perso=selected) }}">Tous les matchs →</a></div>
+      <div class="panel-title"><h2>Sessions récentes</h2>{% if matches_pages %}<a class="small" href="{{ url_for('match_list', perso=selected) }}">Tous les matchs →</a>{% endif %}</div>
       <table>
         <tr><th>Jour</th><th>Bilan</th><th></th><th>Winrate</th><th>Rating</th></tr>
         {% for s in sessions %}
         <tr>
-          <td><a href="{{ url_for('match_list', jour=s.day, perso=selected) }}">{{ s.day }}</a></td>
+          <td>{% if matches_pages %}<a href="{{ url_for('match_list', jour=s.day, perso=selected) }}">{{ s.day }}</a>{% else %}{{ s.day }}{% endif %}</td>
           <td class="nowrap"><span class="good">{{ s.wins }}V</span> / <span class="bad">{{ s.losses }}D</span></td>
           <td class="barcell">{{ wlbar(s.wins, s.total) }}</td>
           <td>{{ wr(s.winrate) }}</td>

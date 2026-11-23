@@ -462,3 +462,21 @@ def test_period_rating_delta_ignores_rounding():
     assert stats.weekly(ms)[0]["rating_delta"] == 19
     assert stats.sessions(ms)[0]["rating_delta"] == 19
     assert stats.period_rating_delta([M("W")]) is None
+
+
+def test_matches_pages_can_be_disabled(tmp_path):
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "ENABLE_MATCHES_PAGES": False})
+    client = login(app, app.test_client())
+    with app.app_context():
+        get_db().execute("INSERT INTO matches (player_id, played_at, my_char, opp_char, result) "
+                         "VALUES (?, '2026-11-20 10:00', 'Leroy', 'King', 'L')", (ME,))
+        get_db().commit()
+    for url in ["/matchs", "/matchs/nouveau", "/matchs/1/modifier", "/matchups", "/matchups/King"]:
+        assert client.get(url).status_code == 404, url
+    assert client.post("/matchs/1/supprimer").status_code == 404
+    for url in ["/", "/stats", "/entrainement"]:
+        page = client.get(url).get_data(as_text=True)
+        assert "/matchs" not in page and "/matchups" not in page, url
+    stats_page = client.get("/stats").get_data(as_text=True)
+    assert "/entrainement/punitions?adversaire=King" in stats_page    # les persos mènent aux fiches

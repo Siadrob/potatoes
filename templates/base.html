@@ -17,9 +17,11 @@
       <a href="{{ url_for('dashboard') }}">Statistiques</a>
       <a href="{{ url_for('training_hub') }}">Entraînement</a>
       <a href="{{ url_for('plan') }}">Mon plan</a>
+      {% if matches_pages %}
       <a href="{{ url_for('match_list') }}">Matchs</a>
       <a href="{{ url_for('matchups') }}">Matchups</a>
       <a class="btn" href="{{ url_for('match_new') }}">+ Match</a>
+      {% endif %}
     </nav>
     <details class="player-menu">
       <summary><span class="player-dot">{{ profile['name'][:1]|upper }}</span>{{ profile['name'] }}</summary>

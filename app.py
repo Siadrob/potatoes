@@ -24,6 +24,10 @@ from db import adopt_orphans, close_db, get_db, init_db, save_imported
 AUTO_REFRESH = timedelta(hours=6)
 # Pages accessibles sans être identifié.
 PUBLIC_ENDPOINTS = {"login", "static", "portrait"}
+# Rubriques « Matchs » et « Matchups » (liste, saisie manuelle, notes), mises en pause :
+# activables avec ENABLE_MATCHES_PAGES = True dans instance/config.py.
+MATCHES_ENDPOINTS = {"match_list", "match_new", "match_edit", "match_delete",
+                     "matchups", "matchup_detail"}
 
 
 def _offline(*_args, **_kwargs):
@@ -55,11 +59,14 @@ def create_app(test_config=None):
         PORTRAIT_DOWNLOAD=portraits.download,
         PORTRAIT_OFFICIAL=portraits.fetch_official,
         FRAMEDATA_FETCH=framedata.fetch_raw,
+        ENABLE_MATCHES_PAGES=False,
     )
     if test_config:
         # Pas d'accès réseau implicite pendant les tests.
+        # Les tests couvrent aussi les rubriques en pause, pour qu'elles restent fonctionnelles.
         app.config.update({"PORTRAIT_OFFICIAL": None, "WAVU_FETCH": _offline,
-                           "FRAMEDATA_FETCH": _offline, "SECRET_KEY": "tests", **test_config})
+                           "FRAMEDATA_FETCH": _offline, "SECRET_KEY": "tests",
+                           "ENABLE_MATCHES_PAGES": True, **test_config})
     else:
         # Réglages locaux (clé API…) dans instance/config.py, exclu de Git.
         app.config.from_pyfile("config.py", silent=True)
@@ -79,6 +86,8 @@ def create_app(test_config=None):
         if g.player is None and request.endpoint not in PUBLIC_ENDPOINTS:
             session.pop("player", None)
             return redirect(url_for("login"))
+        if request.endpoint in MATCHES_ENDPOINTS and not app.config["ENABLE_MATCHES_PAGES"]:
+            abort(404)
         if g.player is not None and request.method == "GET" and request.endpoint == "home":
             last = g.player["last_import_at"]
             stale = not last or datetime.fromisoformat(last).replace(tzinfo=timezone.utc) \
@@ -88,7 +97,16 @@ def create_app(test_config=None):
 
     @app.context_processor
     def inject_globals():
-        return {"CHARACTERS": all_characters(), "RANKS": RANKS, "profile": get_profile()}
+        enabled = app.config["ENABLE_MATCHES_PAGES"]
+
+        def opp_link(char, **args):
+            """Lien vers un perso adverse : sa page matchup, ou sa fiche de punitions."""
+            if enabled:
+                return url_for("matchup_detail", char=char)
+            return url_for("punish_page", adversaire=char, **args)
+
+        return {"CHARACTERS": all_characters(), "RANKS": RANKS, "profile": get_profile(),
+                "matches_pages": enabled, "opp_link": opp_link}
 
     def refresh_player(pid, html=None, quiet=False):
         """Va chercher tout ce qu'on peut savoir du joueur : matchs, rating, rangs Dan.

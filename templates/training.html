@@ -57,7 +57,7 @@
     <tr><th>Adversaire</th><th>Bilan</th><th>Winrate</th><th title="Victoires qu'il t'aurait fallu pour être à 50 % dans ce matchup">Victoires à récupérer</th><th title="Points de winrate global gagnés si ce matchup remontait à 50 %">Gain global</th><th>Quiz</th><th></th></tr>
     {% for m in margins %}
     <tr>
-      <td><a href="{{ url_for('matchup_detail', char=m.opp_char) }}"><strong>{{ m.opp_char }}</strong></a></td>
+      <td><a href="{{ opp_link(m.opp_char, perso=char) }}"><strong>{{ m.opp_char }}</strong></a></td>
       <td class="nowrap"><span class="good">{{ m.wins }}V</span> / <span class="bad">{{ m.games - m.wins }}D</span></td>
       <td class="bad">{{ m.winrate }} %</td>
       <td><span class="gain">{{ m.missing_wins }}</span></td>
