@@ -37,7 +37,8 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
 
 ## Démarrage rapide
 
-Il faut seulement **Python 3.10 ou plus récent** (voir [Prérequis](#prérequis) s'il manque).
+Il faut **Python 3.10 ou plus récent** ; la version recommandée est la dernière,
+**Python 3.15** (voir [Prérequis](#prérequis) pour l'installer).
 
 1. **Récupère le projet** : `git clone https://github.com/Siadrob/potatoes.git`,
    ou sur GitHub, bouton « Code » puis « Download ZIP », et décompresse l'archive.
@@ -58,15 +59,30 @@ Options : `--port 5050` pour choisir le port (par défaut le premier libre à pa
 
 | Outil | Version | Vérifier |
 |---|---|---|
-| Python | 3.10 ou plus récent (testé avec 3.13) | `python3 --version` (Windows : `py --version`) |
+| Python | 3.10 minimum, **3.15 recommandé** (testé avec 3.13 et 3.15) | `python3 --version` (Windows : `py --version`) |
 | Connexion internet | pour l'import, les frames, les vidéos, les graphiques et les polices | |
 | Git (facultatif) | pour `git clone` et les mises à jour ; sinon, télécharge le ZIP | `git --version` |
 
 Installer Python s'il manque :
 
-- **Debian, Ubuntu, WSL** : `sudo apt update && sudo apt install -y python3 python3-venv`
+- **Windows** : [python.org](https://www.python.org/downloads/) (dernière version), en cochant
+  « Add python.exe to PATH ».
 - **macOS** (avec [Homebrew](https://brew.sh)) : `brew install python`
-- **Windows** : [python.org](https://www.python.org/downloads/), en cochant « Add python.exe to PATH ».
+- **Debian, Ubuntu, WSL** : `sudo apt update && sudo apt install -y python3 python3-venv`.
+  Attention, la version fournie par la distribution peut être plus ancienne (3.13 sous
+  Debian 13) : elle suffit, mais pour la dernière version, utilise `uv` ci-dessous.
+
+**Avoir la dernière version de Python sans toucher à celle du système** : avec
+[uv](https://docs.astral.sh/uv/), qui télécharge Python dans ton dossier personnel.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh      # installe uv (ou : pipx install uv)
+uv run --no-project run.py                           # au lieu de « python3 run.py »
+```
+
+Le fichier `.python-version` du projet indique `3.15` : `uv` télécharge cette version si
+besoin et `run.py` crée l'environnement du projet avec. Les lancements suivants peuvent se
+faire avec `python3 run.py` comme d'habitude : le site tourne avec le Python de `.venv`.
 
 ## Installation manuelle (facultative)
 
@@ -148,6 +164,11 @@ git pull
 python3 run.py
 ```
 
+**Changer de version de Python** (par exemple pour passer à la dernière) : renomme ou
+supprime le dossier `.venv`, puis relance avec la nouvelle version (`uv run --no-project
+run.py`, ou `python3.15 run.py`). L'environnement est recréé ; tes données (`instance/`)
+ne sont pas touchées.
+
 (ou télécharge à nouveau le ZIP et décompresse-le en gardant ton dossier `instance/`).
 Les dépendances sont réinstallées automatiquement si elles ont changé, et la base de
 données est mise à jour au lancement.
@@ -196,6 +217,7 @@ Chaque argument est un ID Tekken, suivi facultativement de `:` et du profil star
 | `ensurepip is not available` ou « Impossible de créer l'environnement Python » | `sudo apt install python3-venv` (Debian, Ubuntu, WSL), puis relance `python3 run.py` |
 | `flask: command not found` (installation manuelle) | L'environnement n'est pas activé : `source .venv/bin/activate`, ou utilise `python3 run.py` |
 | L'installation a été interrompue ou semble cassée | Supprime le dossier `.venv` et relance `python3 run.py` |
+| Erreur de compilation de pandas (« Unknown compiler ») | Ta version de Python est plus récente que les paquets précompilés de pandas : `pip install --upgrade pip`, puis relance ; sinon, utilise la version de `.python-version` avec `uv`. |
 | Le navigateur ne s'ouvre pas | Ouvre à la main l'adresse affichée par `run.py` (ex. http://127.0.0.1:5000) |
 | `Address already in use` / port 5000 occupé | `run.py` prend automatiquement le port libre suivant. En installation manuelle : `--port 5001`. |
 | Connexion : « Cet ID est introuvable » ou « Aucun match classé » | Vérifie l'ID (12 caractères, tirets facultatifs) en cherchant ton pseudo sur ewgf.gg. Seuls les joueurs ayant des matchs classés sont reconnus. |
