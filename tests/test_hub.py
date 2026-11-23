@@ -8,7 +8,7 @@ from conftest import ME, login
 from db import get_db
 
 YT = {"items": [
-    {"id": {"videoId": "abc123"}, "snippet": {"title": "Leroy combo guide &amp; tips", "channelTitle": "RyzingSol",
+    {"id": {"videoId": "abc123"}, "snippet": {"title": "Ronin (Leroy) vs Falcon &amp; co | EVO France", "channelTitle": "Evo",
      "publishedAt": "2026-07-10T12:00:00Z", "thumbnails": {"medium": {"url": "https://i.ytimg.com/vi/abc123/mq.jpg"}}}},
     {"id": {"channelId": "pas une vidéo"}, "snippet": {}},
 ]}
@@ -58,17 +58,31 @@ def make(tmp_path, fake, **cfg):
 
 def test_youtube_parsing(fake):
     videos = media.youtube_videos("k", "Leroy", get=fake)
-    assert videos == [{"id": "abc123", "title": "Leroy combo guide & tips", "channel": "RyzingSol",
+    assert videos == [{"id": "abc123", "title": "Ronin (Leroy) vs Falcon & co | EVO France", "channel": "Evo",
                        "date": "2026-07-10", "thumb": "https://i.ytimg.com/vi/abc123/mq.jpg",
-                       "url": "https://www.youtube.com/watch?v=abc123"}]
+                       "url": "https://www.youtube.com/watch?v=abc123", "competitive": True}]
+
+
+def test_video_ranking():
+    vids = [{"title": "Leroy ranked grind", "date": "2026-11-01"},
+            {"title": "Breadman (Leroy) TWT top 8", "date": "2026-02-01"},
+            {"title": "Nina vs King | EVO", "date": "2026-11-10"},
+            {"title": "Ronin (LEROY) EVO France", "date": "2026-10-10"},
+            {"title": "Leroy vs Bob", "date": "2026-09-01"},
+            {"title": "Leroy high level", "date": "2026-08-01"}]
+    ranked = media.rank_videos([dict(v) for v in vids], "Leroy")
+    # Le perso doit être cité ; tournois d'abord (du plus récent au plus ancien), puis le reste.
+    assert [v["title"] for v in ranked] == ["Ronin (LEROY) EVO France", "Breadman (Leroy) TWT top 8",
+                                            "Leroy ranked grind", "Leroy vs Bob", "Leroy high level"]
 
 
 def test_stream_ranking(fake):
     tw = media.Twitch("id", "secret", get=fake)
-    ranked = media.rank_streams(tw.streams(), "Leroy", "fr")
-    # Le perso d'abord, puis la langue choisie, puis les plus regardés.
-    assert [s["user"] for s in ranked] == ["LeroyMain", "PetitFR", "BigEN"]
-    assert ranked[0]["mentions_char"] and ranked[0]["thumb"] == "https://x/320x180.jpg"
+    ranked = media.rank_streams(tw.streams(), "Leroy")
+    # Français d'abord, puis anglais, puis les autres langues ; les plus regardés en tête.
+    assert [s["user"] for s in ranked] == ["PetitFR", "BigEN", "LeroyMain"]
+    assert ranked[2]["mentions_char"] and not ranked[0]["mentions_char"]
+    assert ranked[0]["thumb"] == "https://x/320x180.jpg"
     tw.streams()
     assert fake.calls.count("https://id.twitch.tv/oauth2/token") == 1     # jeton réutilisé
     assert fake.calls.count("https://api.twitch.tv/helix/games") == 1     # id du jeu réutilisé
@@ -98,7 +112,7 @@ def test_home_without_keys(tmp_path, fake):
 def test_home_with_youtube_and_partial_twitch(tmp_path, fake):
     app, client = make(tmp_path, fake, YOUTUBE_API_KEY="k", TWITCH_CLIENT_ID="id")
     html = client.get("/").get_data(as_text=True)
-    assert 'data-video="abc123"' in html and "RyzingSol" in html
+    assert 'data-video="abc123"' in html and "EVO France" in html
     assert "TWITCH_CLIENT_SECRET" in html
     client.get("/")
     assert fake.calls.count("https://www.googleapis.com/youtube/v3/search") == 1   # cache 24 h
@@ -107,7 +121,7 @@ def test_home_with_youtube_and_partial_twitch(tmp_path, fake):
 def test_home_with_twitch(tmp_path, fake):
     app, client = make(tmp_path, fake, TWITCH_CLIENT_ID="id", TWITCH_CLIENT_SECRET="s")
     html = client.get("/").get_data(as_text=True)
-    assert html.index("LeroyMain") < html.index("PetitFR") < html.index("BigEN")
+    assert html.index("PetitFR") < html.index("BigEN") < html.index("LeroyMain")
     assert 'class="char-tag">Leroy' in html
 
 

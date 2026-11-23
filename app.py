@@ -69,7 +69,7 @@ def create_app(test_config=None):
         YOUTUBE_API_KEY=os.environ.get("YOUTUBE_API_KEY"),
         TWITCH_CLIENT_ID=os.environ.get("TWITCH_CLIENT_ID"),
         TWITCH_CLIENT_SECRET=os.environ.get("TWITCH_CLIENT_SECRET"),
-        HUB_LANGUAGE="fr",          # langue privilégiée pour les lives Twitch
+        HUB_LANGUAGES=("fr", "en"),  # ordre des langues pour les lives Twitch
         MEDIA_GET=None,             # fonction d'accès HTTP du hub ; remplaçable en test
     )
     if test_config:
@@ -478,14 +478,14 @@ def create_app(test_config=None):
                "twitch_partial": bool(app.config.get("TWITCH_CLIENT_ID")) and twitch is None}
         if hub["youtube"]:
             try:
-                hub["videos"] = media.cached(db, f"youtube:{char}", media.VIDEOS_TTL, lambda: media.youtube_videos(
+                hub["videos"] = media.cached(db, f"youtube-matches:{char}", media.VIDEOS_TTL, lambda: media.youtube_videos(
                     app.config["YOUTUBE_API_KEY"], char, get=media_get))
             except media.MediaError as e:
                 hub["videos_error"] = str(e)
         if twitch is not None:
             try:
                 streams = media.cached(db, "twitch:streams", media.STREAMS_TTL, twitch.streams)
-                hub["streams"] = media.rank_streams(streams, char, app.config["HUB_LANGUAGE"])
+                hub["streams"] = media.rank_streams(streams, char, app.config["HUB_LANGUAGES"])
             except (media.MediaError, KeyError) as e:
                 hub["streams_error"] = str(e)
         return hub

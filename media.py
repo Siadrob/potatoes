@@ -38,10 +38,21 @@ def _get_json(url, headers=None, data=None, timeout=20):
 
 # ---------- YouTube ----------
 
+# Mots qui signalent un match de tournoi dans un titre de vidéo.
+TOURNAMENT_WORDS = ("twt", "evo", "ewc", "top 8", "top 16", "grand final", "winners", "losers", "final",
+                    "tournament", "tournoi", "pools", "cup", "major", "masters", "championship", "dojo")
+
+
 def youtube_videos(api_key, char, limit=8, get=_get_json):
-    """Vidéos Tekken 8 sur un perso (guides, combos…), les plus pertinentes."""
-    params = {"part": "snippet", "type": "video", "maxResults": limit, "order": "relevance",
-              "q": f"Tekken 8 {char} guide combo", "safeSearch": "moderate", "key": api_key}
+    """Matchs compétitifs récents (moins d'un an) où l'on voit le perso.
+
+    On garde les vidéos dont le titre cite le perso, matchs de tournoi d'abord, puis les
+    plus récentes. Durée moyenne (4 à 20 min) : des sets, pas des VOD de plusieurs heures.
+    """
+    since = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    params = {"part": "snippet", "type": "video", "maxResults": 25, "order": "relevance",
+              "q": f"Tekken 8 {char} tournament", "publishedAfter": since, "videoDuration": "medium",
+              "safeSearch": "moderate", "key": api_key}
     data = get("https://www.googleapis.com/youtube/v3/search?" + urllib.parse.urlencode(params))
     videos = []
     for item in data.get("items") or []:
@@ -54,7 +65,19 @@ def youtube_videos(api_key, char, limit=8, get=_get_json):
         videos.append({"id": vid, "title": _unescape(s.get("title")), "channel": s.get("channelTitle"),
                        "date": (s.get("publishedAt") or "")[:10], "thumb": thumb,
                        "url": f"https://www.youtube.com/watch?v={vid}"})
-    return videos
+    return rank_videos(videos, char, limit)
+
+
+def rank_videos(videos, char, limit=8):
+    char_l = char.lower()
+    on_char = [v for v in videos if char_l in v["title"].lower()]
+    pool = on_char if len(on_char) >= 4 else on_char + [v for v in videos if v not in on_char]
+    for v in pool:
+        v["competitive"] = any(w in v["title"].lower() for w in TOURNAMENT_WORDS)
+    # Tri stable : d'abord les plus récentes, puis les matchs de tournoi remontent en tête.
+    pool.sort(key=lambda v: v["date"], reverse=True)
+    pool.sort(key=lambda v: not v["competitive"])
+    return pool[:limit]
 
 
 def _unescape(text):
@@ -94,7 +117,7 @@ class Twitch:
             self._game_id = games[0]["id"]
         return self._game_id
 
-    def streams(self, first=50):
+    def streams(self, first=100):
         data = self.helix("streams", {"game_id": self.game_id(), "first": first, "type": "live"})
         out = []
         for s in data.get("data") or []:
@@ -105,15 +128,14 @@ class Twitch:
         return out
 
 
-def rank_streams(streams, char, language="fr", limit=6):
-    """Les lives qui parlent du perso d'abord, puis ceux dans la langue choisie, puis les plus regardés."""
+def rank_streams(streams, char, languages=("fr", "en"), limit=6):
+    """Les lives en français d'abord, puis en anglais, puis les autres ; les plus regardés en tête.
+
+    Les lives qui citent le perso dans leur titre reçoivent un badge.
+    """
     char_l = (char or "").lower()
-
-    def key(s):
-        return (char_l not in s["title"].lower() if char_l else True,
-                s["language"] != language, -s["viewers"])
-
-    ranked = sorted(streams, key=key)[:limit]
+    order = {lang: i for i, lang in enumerate(languages)}
+    ranked = sorted(streams, key=lambda s: (order.get(s["language"], len(order)), -s["viewers"]))[:limit]
     for s in ranked:
         s["mentions_char"] = bool(char_l) and char_l in s["title"].lower()
     return ranked

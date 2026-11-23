@@ -1,5 +1,5 @@
 <section class="card hub-card">
-  <div class="panel-title"><h2>▶ Vidéos {{ char }}</h2><span class="muted small">YouTube</span></div>
+  <div class="panel-title"><h2>▶ Matchs {{ char }}</h2><span class="muted small">YouTube · compétitif</span></div>
   {% if not hub.youtube %}
     <p class="muted small">Ajoute une clé <code>YOUTUBE_API_KEY</code> dans <code>instance/config.py</code>
       pour voir ici des guides et combos sur ton perso (voir le README).</p>
@@ -14,7 +14,7 @@
       <span class="muted small">{{ v.channel }} · {{ v.date[8:10] }}/{{ v.date[5:7] }}/{{ v.date[2:4] }}</span>
     </a>
     {% else %}<p class="muted small">Aucune vidéo trouvée.</p>{% endfor %}
-    <a class="small" href="https://www.youtube.com/results?search_query={{ ('Tekken 8 ' ~ char)|urlencode }}"
+    <a class="small" href="https://www.youtube.com/results?search_query={{ ('Tekken 8 ' ~ char ~ ' tournament')|urlencode }}"
        target="_blank" rel="noopener">Plus de vidéos sur YouTube ↗</a>
   {% endif %}
 </section>

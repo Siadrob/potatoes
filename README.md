@@ -11,9 +11,10 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   puis des **widgets** au choix (progression, semaine, défi du jour, courbe, matchups,
   calendrier, marges de progression, plan…). Bouton « Personnaliser » : glisser-déposer,
   taille petite / moyenne / large, masquer, ajouter ; disposition enregistrée par joueur.
-- **Hub Tekken** sur l'accueil : vidéos YouTube sur ton perso (guides, combos, lecture
-  sur place) et streamers Tekken 8 en live sur Twitch (ceux qui jouent ton perso, puis en
-  français, puis les plus regardés). En colonnes sur grand écran, sous les widgets sinon.
+- **Hub Tekken** sur l'accueil : matchs compétitifs récents de ton perso sur YouTube
+  (TWT, EVO, top 8… lecture sur place) et streamers Tekken 8 en live sur Twitch (en
+  français d'abord, puis en anglais, les plus regardés en tête). En colonnes sur grand
+  écran, sous les widgets sinon.
 - **Import automatique** des matchs classés depuis [wank.wavu.wiki](https://wank.wavu.wiki)
   (500 derniers matchs à chaque import, sans doublons) et des rangs Dan via l'API
   [ewgf.gg](https://ewgf.gg) (facultatif).
