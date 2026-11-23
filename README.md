@@ -163,6 +163,18 @@ pytest
 
 Les tests n'utilisent pas internet : les accès réseau sont simulés.
 
+**Contrôle sur données réelles.** `tools/verify_live.py` compare, pour plusieurs vrais
+profils, ce qu'affiche chaque rubrique (accueil, statistiques, entraînement, tournois) à
+des valeurs recalculées directement depuis wavu, ewgf et start.gg, et vérifie que les
+joueurs ne voient pas les données des autres. Il travaille sur une copie temporaire de la
+base et demande un accès réseau :
+
+```bash
+python tools/verify_live.py 4qLJmf7THeE2:user/97b1b8ce 4NLdDTT33td4:user/f155f1b0
+```
+
+Chaque argument est un ID Tekken, suivi facultativement de `:` et du profil start.gg.
+
 ## Dépannage
 
 | Problème | Solution |
