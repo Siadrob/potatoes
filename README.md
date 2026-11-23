@@ -19,51 +19,53 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   - *plan d'entraînement* : tes objectifs à faire, en cours, acquis.
 - **Saisie manuelle** de matchs et **notes** par matchup.
 
+## Démarrage rapide
+
+Il faut seulement **Python 3.10 ou plus récent** (voir [Prérequis](#prérequis) s'il manque).
+
+1. **Récupère le projet** : `git clone https://github.com/Siadrob/potatoes.git`,
+   ou sur GitHub, bouton « Code » puis « Download ZIP », et décompresse l'archive.
+2. **Lance-le** depuis le dossier du projet :
+
+   ```bash
+   python3 run.py        # Linux, macOS, WSL
+   py run.py             # Windows (ou double-clic sur run.py)
+   ```
+
+C'est tout. Le premier lancement installe ce qu'il faut (environ une minute), puis le site
+s'ouvre dans ton navigateur. Les fois suivantes, il démarre directement. Arrête-le avec `Ctrl+C`.
+
+Options : `--port 5050` pour choisir le port (par défaut le premier libre à partir de 5000),
+`--no-browser` pour ne pas ouvrir le navigateur.
+
 ## Prérequis
 
 | Outil | Version | Vérifier |
 |---|---|---|
-| Python | 3.10 ou plus récent (testé avec 3.13) | `python3 --version` |
-| Git | n'importe laquelle | `git --version` |
+| Python | 3.10 ou plus récent (testé avec 3.13) | `python3 --version` (Windows : `py --version`) |
 | Connexion internet | pour l'import, les frames, les vidéos, les graphiques et les polices | |
+| Git (facultatif) | pour `git clone` et les mises à jour ; sinon, télécharge le ZIP | `git --version` |
 
-Installer ce qui manque :
+Installer Python s'il manque :
 
-- **Debian, Ubuntu, WSL** : `sudo apt update && sudo apt install -y python3 python3-venv git`
-- **macOS** (avec [Homebrew](https://brew.sh)) : `brew install python git`
-- **Windows** : installe Python depuis [python.org](https://www.python.org/downloads/)
-  en cochant « Add python.exe to PATH », et Git depuis [git-scm.com](https://git-scm.com).
+- **Debian, Ubuntu, WSL** : `sudo apt update && sudo apt install -y python3 python3-venv`
+- **macOS** (avec [Homebrew](https://brew.sh)) : `brew install python`
+- **Windows** : [python.org](https://www.python.org/downloads/), en cochant « Add python.exe to PATH ».
 
-## Installation
+## Installation manuelle (facultative)
 
-### Linux, macOS, WSL
+`run.py` fait exactement ceci, si tu préfères contrôler chaque étape :
 
 ```bash
-git clone https://github.com/Siadrob/potatoes.git
-cd potatoes
-
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows : .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+flask --app app run                # ou : waitress-serve --call app:create_app
 ```
 
-### Windows (PowerShell)
-
-```powershell
-git clone https://github.com/Siadrob/potatoes.git
-cd potatoes
-
-py -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-Si PowerShell refuse d'activer l'environnement, lance une fois
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, puis réessaie.
-
-Dans la suite, les commandes supposent que l'environnement est activé : `(.venv)` apparaît
-au début de la ligne. À chaque nouveau terminal, réactive-le avec `source .venv/bin/activate`
-(ou `.venv\Scripts\Activate.ps1` sous Windows).
+Sous Windows, si PowerShell refuse d'activer l'environnement, lance une fois
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. Avec `flask --app app run --debug`,
+le code est rechargé à chaque modification (utile pour développer).
 
 ## Configuration (facultative)
 
@@ -77,23 +79,14 @@ cp config.example.py instance/config.py
 
 Sous Windows : `mkdir instance` puis `copy config.example.py instance\config.py`.
 
-Ouvre ensuite `instance/config.py` et colle ta clé API ewgf.gg dans `EWGF_API_KEY`.
+Ouvre ensuite `instance/config.py` et colle une clé API ewgf.gg dans `EWGF_API_KEY`.
 Elle se crée sur [ewgf.gg](https://ewgf.gg) : compte, Paramètres, onglet Developer.
 On peut aussi la passer par la variable d'environnement `EWGF_API_KEY`.
 
-Le dossier `instance/` est ignoré par Git : ta clé n'est jamais commitée.
-
-## Lancer le site
-
-```bash
-flask --app app run
-```
-
-Ouvre ensuite http://127.0.0.1:5000. Arrête le serveur avec `Ctrl+C`.
-
-- Port déjà utilisé : `flask --app app run --port 5001`.
-- Mode développement, qui recharge le code à chaque modification : ajoute `--debug`.
-- Le site n'a pas de mot de passe : garde-le en local, ne l'expose pas sur internet.
+**Une seule clé suffit pour tout le site** : les joueurs, eux, n'entrent que leur ID Tekken.
+Le quota gratuit (100 requêtes par heure) est partagé entre tous les joueurs du site,
+ce qui suffit largement pour un petit groupe. Le dossier `instance/` est ignoré par Git :
+la clé n'est jamais commitée.
 
 ## Premier démarrage
 
@@ -122,11 +115,12 @@ La base de données est créée automatiquement au premier lancement, dans
 
 ```bash
 git pull
-source .venv/bin/activate
-pip install -r requirements.txt
+python3 run.py
 ```
 
-La base de données existante est mise à jour automatiquement au lancement suivant.
+(ou télécharge à nouveau le ZIP et décompresse-le en gardant ton dossier `instance/`).
+Les dépendances sont réinstallées automatiquement si elles ont changé, et la base de
+données est mise à jour au lancement.
 
 ## Sauvegarder ou changer de machine
 
@@ -156,9 +150,11 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 | Problème | Solution |
 |---|---|
 | `python3: command not found` | Installe Python (voir Prérequis). Sous Windows, utilise `py` à la place de `python3`. |
-| `ensurepip is not available` à la création du venv | `sudo apt install python3-venv` (Debian, Ubuntu, WSL) |
-| `flask: command not found` | L'environnement n'est pas activé : `source .venv/bin/activate` |
-| `Address already in use` / port 5000 occupé | Un autre serveur tourne déjà : arrête-le, ou lance avec `--port 5001`. Sur macOS, le port 5000 est souvent pris par AirPlay. |
+| `ensurepip is not available` ou « Impossible de créer l'environnement Python » | `sudo apt install python3-venv` (Debian, Ubuntu, WSL), puis relance `python3 run.py` |
+| `flask: command not found` (installation manuelle) | L'environnement n'est pas activé : `source .venv/bin/activate`, ou utilise `python3 run.py` |
+| L'installation a été interrompue ou semble cassée | Supprime le dossier `.venv` et relance `python3 run.py` |
+| Le navigateur ne s'ouvre pas | Ouvre à la main l'adresse affichée par `run.py` (ex. http://127.0.0.1:5000) |
+| `Address already in use` / port 5000 occupé | `run.py` prend automatiquement le port libre suivant. En installation manuelle : `--port 5001`. |
 | L'import wavu échoue (403 ou réseau) | Vérifie ta connexion et l'ID joueur, puis réessaie plus tard. |
 | « ewgf : erreur invalid_api_key » | La clé dans `instance/config.py` est fausse ou révoquée : régénère-la sur ewgf.gg. |
 | « ewgf : erreur rate_limit_exceeded » | Quota gratuit (100 requêtes par heure) atteint : réessaie l'heure suivante. |
@@ -169,6 +165,7 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 
 | Fichier | Rôle |
 |---|---|
+| `run.py` | Lanceur tout-en-un : installe si besoin et démarre le site |
 | `app.py` | Application Flask : routes et formulaires |
 | `db.py`, `schema.sql` | Base SQLite, schéma et migrations automatiques |
 | `stats.py` | Statistiques de matchs (winrate, séries, sessions, progression) |
