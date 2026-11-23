@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS players (
     goal_rating INTEGER,
     layout TEXT,                         -- disposition des widgets de l'accueil (JSON)
     steam_id TEXT,                       -- profil Steam (lu sur wavu)
+    layout_tournois TEXT,                -- disposition des widgets de la page Tournois (JSON)
+    startgg TEXT,                        -- profil start.gg lié (JSON : slug, ids, pseudo, avatar)
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_import_at TEXT
 );
@@ -93,4 +95,12 @@ CREATE TABLE IF NOT EXISTS training_goals (
     status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     done_at TEXT
+);
+
+-- ---------- Tournois (start.gg) ----------
+
+CREATE TABLE IF NOT EXISTS startgg_cache (
+    player_id TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,               -- JSON : tournois, sets, tournois à venir
+    fetched_at TEXT NOT NULL
 );

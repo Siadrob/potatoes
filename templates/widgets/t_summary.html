@@ -1,0 +1,6 @@
+{% set s = t_summary %}
+<div class="prog-rows">
+  <div><span>Sets</span><strong><span class="good">{{ s.set_wins }}</span>-<span class="bad">{{ s.set_losses }}</span></strong></div>
+  <div><span>Manches</span><strong><span class="good">{{ s.games_won }}</span>-<span class="bad">{{ s.games_lost }}</span>{% if s.game_rate is not none %} <span class="muted small">({{ s.game_rate }} %)</span>{% endif %}</strong></div>
+  <div><span>Forfaits</span><strong>{{ s.dq }}</strong></div>
+</div>

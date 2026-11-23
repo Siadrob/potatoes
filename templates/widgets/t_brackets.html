@@ -1,0 +1,9 @@
+{% for side, label in [('winners', 'Winners bracket'), ('losers', 'Losers bracket')] %}
+  {% set b = t_brackets[side] %}
+  <div class="goal">
+    <div class="goal-head"><span>{{ label }}</span>
+      <span class="small"><span class="good">{{ b.wins }}V</span> / <span class="bad">{{ b.losses }}D</span></span></div>
+    <div class="wlbar{{ ' empty' if not (b.wins + b.losses) }}"><div style="width: {{ b.rate or 0 }}%"></div></div>
+  </div>
+{% endfor %}
+<p class="small muted">Sets gagnés par forfait exclus.</p>

@@ -1,0 +1,10 @@
+{% for st in t_sets %}
+  <div class="set-row">
+    <span class="badge {{ 'win' if st.won else 'loss' }}">{{ 'V' if st.won else 'D' }}</span>
+    <div class="set-main">
+      <div><strong>{{ st.opponent }}</strong> <span class="mono">{{ st.my_score }}-{{ st.opp_score }}</span></div>
+      <div class="muted small">{{ st.round }} · <a href="{{ st.url }}" target="_blank" rel="noopener">{{ st.tournament }}</a></div>
+    </div>
+    <span class="muted small nowrap">{{ st.date[8:10] }}/{{ st.date[5:7] }}</span>
+  </div>
+{% else %}<p class="muted small">Aucun set joué.</p>{% endfor %}

@@ -1,0 +1,7 @@
+{% for r in t_rivals %}
+  <div class="know-row rival-row">
+    <span class="rival-name" title="{{ r.name }}">{{ r.name }}</span>
+    <div class="wlbar"><div style="width: {{ 100 * r.wins / r.sets }}%"></div></div>
+    <span class="nowrap small"><span class="good">{{ r.wins }}</span>-<span class="bad">{{ r.losses }}</span></span>
+  </div>
+{% else %}<p class="muted small">Aucun adversaire pour l'instant.</p>{% endfor %}

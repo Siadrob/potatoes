@@ -1,0 +1,19 @@
+{% if events %}
+<div class="table-wrap">
+<table>
+  <tr><th>Date</th><th>Tournoi</th><th class="hide-sm">Lieu</th><th>Placement</th><th>Classement</th></tr>
+  {% for e in events[:12] %}
+  <tr>
+    <td class="nowrap">{{ e.date[8:10] }}/{{ e.date[5:7] }}/{{ e.date[2:4] }}</td>
+    <td><a href="{{ e.url }}" target="_blank" rel="noopener">{{ e.tournament }}</a>
+      {% if e.event and e.event != e.tournament %}<div class="muted small">{{ e.event }}</div>{% endif %}</td>
+    <td class="small hide-sm">{{ 'En ligne' if e.online else (e.city or 'LAN') }}</td>
+    <td class="nowrap"><strong>{{ e.placement or '—' }}</strong> <span class="muted small">/ {{ e.entrants }}</span></td>
+    <td class="barcell">{% if e.top_pct is not none %}
+      <div class="top-bar"><div style="width: {{ 100 - e.top_pct }}%" class="{{ 'hi' if e.top_pct <= 25 else 'mid' if e.top_pct <= 50 else 'lo' }}"></div></div>
+      <span class="small">top {{ e.top_pct }} %</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}<p class="muted small">Aucun tournoi Tekken 8 trouvé sur ce profil.</p>{% endif %}

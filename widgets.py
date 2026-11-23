@@ -1,4 +1,4 @@
-"""Widgets de l'accueil : catalogue, disposition par défaut et validation.
+"""Widgets de l'accueil et de la page Tournois : catalogues, dispositions par défaut, validation.
 
 Une disposition est une liste ordonnée de {"id": ..., "size": "s" | "m" | "l"} :
 s = petit (1/4 de largeur), m = moyen (1/2), l = large (toute la largeur).
@@ -46,7 +46,33 @@ DEFAULT_LAYOUT = [
 ]
 
 
-def normalize(layout):
+TOURNAMENT_CATALOG = {
+    "t_recent": Widget("Derniers tournois", "Placement, nombre d'inscrits et classement relatif.", "l", ("m", "l")),
+    "t_chart": Widget("Évolution des placements", "Ton classement (top %) tournoi après tournoi.", "m", ("m", "l")),
+    "t_sets": Widget("Derniers sets", "Résultats, tours et adversaires de tes derniers sets.", "m", ("m", "l")),
+    "t_rivals": Widget("Adversaires en tournoi", "Les joueurs que tu croises le plus, et ton bilan.", "m", ("s", "m", "l")),
+    "t_brackets": Widget("Winners / Losers", "Ton bilan dans chaque partie du bracket.", "s", ("s", "m")),
+    "t_upcoming": Widget("Prochains tournois", "Les tournois Tekken 8 où tu es inscrit.", "s", ("s", "m", "l")),
+    "t_summary": Widget("Bilan en tournoi", "Sets et manches gagnés, forfaits.", "s", ("s", "m")),
+}
+
+TOURNAMENT_LAYOUT = [
+    {"id": "t_recent", "size": "l"},
+    {"id": "t_chart", "size": "m"},
+    {"id": "t_sets", "size": "m"},
+    {"id": "t_rivals", "size": "m"},
+    {"id": "t_brackets", "size": "s"},
+    {"id": "t_upcoming", "size": "s"},
+]
+
+# Tableau -> (catalogue, disposition par défaut, colonne de la table players)
+BOARDS = {
+    "home": (CATALOG, DEFAULT_LAYOUT, "layout"),
+    "tournois": (TOURNAMENT_CATALOG, TOURNAMENT_LAYOUT, "layout_tournois"),
+}
+
+
+def normalize(layout, catalog=CATALOG):
     """Disposition propre : widgets connus, sans doublon, avec une taille autorisée.
 
     Accepte la valeur brute (liste de dicts) ; tout ce qui est invalide est ignoré.
@@ -56,7 +82,7 @@ def normalize(layout):
         if not isinstance(item, dict):
             continue
         wid, size = item.get("id"), item.get("size")
-        widget = CATALOG.get(wid)
+        widget = catalog.get(wid)
         if widget is None or wid in seen:
             continue
         seen.add(wid)
@@ -64,7 +90,7 @@ def normalize(layout):
     return out
 
 
-def hidden(layout):
+def hidden(layout, catalog=CATALOG):
     """Widgets du catalogue absents de la disposition (proposés dans « Ajouter »)."""
     shown = {item["id"] for item in layout}
-    return [(wid, w) for wid, w in CATALOG.items() if wid not in shown]
+    return [(wid, w) for wid, w in catalog.items() if wid not in shown]

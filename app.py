@@ -14,14 +14,16 @@ import pandas as pd
 import ewgf
 import framedata
 import portraits
+import startgg
 import stats
+import tournaments
 import training
 import wavu
 import widgets
 from data import CHARACTERS, RANKS, rank_level
 from db import adopt_orphans, close_db, get_db, init_db, save_imported
 
-# Réimport automatique des matchs si le dernier date de plus de :
+# Réimport automatique des matchs (et des tournois start.gg) si le dernier date de plus de :
 AUTO_REFRESH = timedelta(hours=6)
 # Pages accessibles sans être identifié.
 PUBLIC_ENDPOINTS = {"login", "static", "portrait"}
@@ -61,13 +63,15 @@ def create_app(test_config=None):
         PORTRAIT_OFFICIAL=portraits.fetch_official,
         FRAMEDATA_FETCH=framedata.fetch_raw,
         ENABLE_MATCHES_PAGES=False,
+        STARTGG_TOKEN=os.environ.get("STARTGG_TOKEN"),
+        STARTGG_RUN=None,          # fonction (requête, variables) -> data ; remplaçable en test
     )
     if test_config:
         # Pas d'accès réseau implicite pendant les tests.
         # Les tests couvrent aussi les rubriques en pause, pour qu'elles restent fonctionnelles.
         app.config.update({"PORTRAIT_OFFICIAL": None, "WAVU_FETCH": _offline,
                            "FRAMEDATA_FETCH": _offline, "SECRET_KEY": "tests",
-                           "ENABLE_MATCHES_PAGES": True, **test_config})
+                           "ENABLE_MATCHES_PAGES": True, "STARTGG_TOKEN": None, **test_config})
     else:
         # Réglages locaux (clé API…) dans instance/config.py, exclu de Git.
         app.config.from_pyfile("config.py", silent=True)
@@ -251,7 +255,7 @@ def create_app(test_config=None):
         switch = [r for r in played if r["name"] in mains or r["name"] == char]
 
         # Widgets : on ne calcule que ce dont les widgets affichés ont besoin.
-        layout = player_layout()
+        layout = player_layout("home")
         shown = {w["id"] for w in layout}
         extra = {}
         if "activity" in shown:
@@ -279,6 +283,7 @@ def create_app(test_config=None):
 
         return render_template(
             "home.html",
+            board="home",
             layout=layout,
             catalog=widgets.CATALOG,
             hidden_widgets=widgets.hidden(layout),
@@ -313,22 +318,144 @@ def create_app(test_config=None):
 
     # ---------- Widgets de l'accueil ----------
 
+    def board_or_400():
+        board = request.args.get("board", "home")
+        if board not in widgets.BOARDS:
+            abort(400)
+        return board, *widgets.BOARDS[board]
+
     @app.post("/widgets")
     def save_widgets():
         """Enregistre la disposition envoyée par la page (JSON : {"layout": [...]})."""
+        board, catalog, _default, column = board_or_400()
         data = request.get_json(silent=True) or {}
-        layout = widgets.normalize(data.get("layout"))
-        get_db().execute("UPDATE players SET layout = ? WHERE polaris_id = ?",
+        layout = widgets.normalize(data.get("layout"), catalog)
+        get_db().execute(f"UPDATE players SET {column} = ? WHERE polaris_id = ?",
                          (json.dumps(layout), player_id()))
         get_db().commit()
         return {"layout": layout}
 
     @app.post("/widgets/reinitialiser")
     def reset_widgets():
-        get_db().execute("UPDATE players SET layout = NULL WHERE polaris_id = ?", (player_id(),))
+        board, _catalog, _default, column = board_or_400()
+        get_db().execute(f"UPDATE players SET {column} = NULL WHERE polaris_id = ?", (player_id(),))
         get_db().commit()
         flash("Disposition par défaut rétablie.")
+        if board == "tournois":
+            return redirect(url_for("tournaments_page"))
         return redirect(url_for("home", perso=request.args.get("perso")))
+
+    # ---------- Tournois (start.gg) ----------
+
+    def startgg_run():
+        """Fonction d'appel à l'API start.gg, ou None si aucun token n'est configuré."""
+        if app.config.get("STARTGG_RUN"):
+            return app.config["STARTGG_RUN"]
+        token = app.config.get("STARTGG_TOKEN")
+        return (lambda query, variables=None: startgg.post(token, query, variables)) if token else None
+
+    def linked_startgg():
+        raw = g.player["startgg"]
+        return json.loads(raw) if raw else None
+
+    def tournament_data(run, ident, force=False):
+        """Données start.gg du joueur : depuis le cache, rafraîchi au-delà de 6 h."""
+        db = get_db()
+        row = db.execute("SELECT payload, fetched_at FROM startgg_cache WHERE player_id = ?",
+                         (player_id(),)).fetchone()
+        fresh = row and datetime.fromisoformat(row["fetched_at"]) > datetime.now(timezone.utc) - AUTO_REFRESH
+        if row and fresh and not force:
+            return json.loads(row["payload"]), row["fetched_at"]
+        try:
+            data = startgg.fetch_all(run, ident)
+        except startgg.StartGGError as e:
+            flash(f"start.gg : {e}.", "error")
+            return (json.loads(row["payload"]), row["fetched_at"]) if row else (None, None)
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        db.execute("INSERT OR REPLACE INTO startgg_cache (player_id, payload, fetched_at) VALUES (?, ?, ?)",
+                   (player_id(), json.dumps(data), now))
+        db.commit()
+        if force:
+            flash(f"start.gg : {len(data['events'])} tournois et {len(data['sets'])} sets Tekken 8.")
+        return data, now
+
+    @app.get("/tournois")
+    def tournaments_page():
+        run = startgg_run()
+        if run is None:
+            return render_template("tournaments.html", state="no_token")
+        ident = linked_startgg()
+        if ident is None:
+            suggestion = None
+            try:
+                owner = startgg.current_user(run)
+                same = lambda s: " ".join((s or "").lower().split())
+                if owner and same(owner["display"]) == same(g.player["name"]):
+                    suggestion = owner
+            except startgg.StartGGError:
+                pass
+            return render_template("tournaments.html", state="unlinked", suggestion=suggestion)
+
+        data, fetched_at = tournament_data(run, ident)
+        if data is None:
+            return render_template("tournaments.html", state="error", ident=ident)
+        layout = player_layout("tournois")
+        events, sets = data["events"], data["sets"]
+        return render_template(
+            "tournaments.html", state="ok", ident=ident, fetched_at=fetched_at,
+            board="tournois", layout=layout, catalog=widgets.TOURNAMENT_CATALOG,
+            hidden_widgets=widgets.hidden(layout, widgets.TOURNAMENT_CATALOG),
+            events=events, upcoming=data["upcoming"],
+            t_summary=tournaments.summary(events, sets),
+            t_history=tournaments.placement_history(events),
+            t_brackets=tournaments.brackets(sets),
+            t_rivals=tournaments.rivals(sets),
+            t_sets=tournaments.recent_sets(sets),
+        )
+
+    @app.post("/tournois/lier")
+    def tournaments_link():
+        run = startgg_run()
+        if run is None:
+            abort(400)
+        try:
+            if request.form.get("owner"):
+                ident = startgg.current_user(run)
+            else:
+                slug = startgg.parse_slug(request.form.get("profile"))
+                if not slug:
+                    flash("Adresse start.gg invalide : colle l'adresse de ton profil "
+                          "(ex. https://www.start.gg/user/97b1b8ce).", "error")
+                    return redirect(url_for("tournaments_page"))
+                ident = startgg.user_by_slug(run, slug)
+        except startgg.StartGGError as e:
+            flash(f"start.gg : {e}.", "error")
+            return redirect(url_for("tournaments_page"))
+        if ident is None:
+            flash("Profil start.gg introuvable (ou sans profil joueur).", "error")
+            return redirect(url_for("tournaments_page"))
+        db = get_db()
+        db.execute("UPDATE players SET startgg = ? WHERE polaris_id = ?", (json.dumps(ident), player_id()))
+        db.execute("DELETE FROM startgg_cache WHERE player_id = ?", (player_id(),))
+        db.commit()
+        flash(f"Compte start.gg lié : {ident['display']}.")
+        return redirect(url_for("tournaments_page"))
+
+    @app.post("/tournois/delier")
+    def tournaments_unlink():
+        db = get_db()
+        db.execute("UPDATE players SET startgg = NULL WHERE polaris_id = ?", (player_id(),))
+        db.execute("DELETE FROM startgg_cache WHERE player_id = ?", (player_id(),))
+        db.commit()
+        flash("Compte start.gg délié.")
+        return redirect(url_for("tournaments_page"))
+
+    @app.post("/tournois/actualiser")
+    def tournaments_refresh():
+        run, ident = startgg_run(), linked_startgg()
+        if run and ident:
+            tournament_data(run, ident, force=True)
+        return redirect(url_for("tournaments_page"))
 
     # ---------- Portraits ----------
 
@@ -840,15 +967,16 @@ def profile_links(player):
     return links
 
 
-def player_layout():
-    """Disposition des widgets du joueur, ou celle par défaut."""
-    raw = g.player["layout"]
+def player_layout(board="home"):
+    """Disposition des widgets du joueur pour ce tableau, ou celle par défaut."""
+    catalog, default, column = widgets.BOARDS[board]
+    raw = g.player[column]
     if raw:
         try:
-            return widgets.normalize(json.loads(raw))
+            return widgets.normalize(json.loads(raw), catalog)
         except ValueError:
             pass
-    return [dict(w) for w in widgets.DEFAULT_LAYOUT]
+    return [dict(w) for w in default]
 
 
 def daily_done_days():

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Tournois{% endblock %}
+{% block content %}
+
+{% if state == "no_token" %}
+  <div class="card empty">
+    <h1>Tournois</h1>
+    <p>Pour suivre tes tournois start.gg, ajoute un token API start.gg dans
+      <code>instance/config.py</code> : <code>STARTGG_TOKEN = "…"</code>.</p>
+    <p class="muted small">Il se crée sur start.gg : profil › Developer Settings › Create new token. Voir le README.</p>
+  </div>
+
+{% elif state == "unlinked" %}
+  <section class="card t-link">
+    <div class="eyebrow">Tournois · start.gg</div>
+    <h1>Lie ton compte start.gg</h1>
+    <p class="muted">Le site récupère tes tournois Tekken 8, tes placements et tes sets pour construire ta page de tournoi.</p>
+    {% if suggestion %}
+    <form method="post" action="{{ url_for('tournaments_link') }}" class="t-suggest">
+      <input type="hidden" name="owner" value="1">
+      {% if suggestion.avatar %}<img src="{{ suggestion.avatar }}" alt="" class="t-avatar small-avatar">{% endif %}
+      <div><strong>{{ suggestion.display }}</strong><div class="muted small">{{ suggestion.slug }}</div></div>
+      <button class="btn" type="submit">C'est moi</button>
+    </form>
+    <p class="muted small">Ou un autre compte :</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('tournaments_link') }}" class="t-form">
+      <label class="label" for="sgg">Adresse de ton profil start.gg</label>
+      <div class="t-form-row">
+        <input id="sgg" type="text" name="profile" required placeholder="https://www.start.gg/user/97b1b8ce">
+        <button class="btn {{ 'ghost' if suggestion }}" type="submit">Lier</button>
+      </div>
+    </form>
+  </section>
+
+{% elif state == "error" %}
+  <div class="card empty">
+    <h1>Tournois</h1>
+    <p>Impossible de récupérer tes données start.gg pour l'instant. Réessaie dans un moment.</p>
+    <form method="post" action="{{ url_for('tournaments_refresh') }}"><button class="btn" type="submit">↻ Réessayer</button></form>
+  </div>
+
+{% else %}
+{% set s = t_summary %}
+<section class="t-hero card">
+  {% if ident.avatar %}<img src="{{ ident.avatar }}" alt="" class="t-avatar">
+  {% else %}<span class="t-avatar t-mono">{{ ident.gamer_tag[:1]|upper }}</span>{% endif %}
+  <div class="t-id">
+    <div class="eyebrow">Tournois Tekken 8 · start.gg</div>
+    <h1>{% if ident.prefix %}<span class="muted">{{ ident.prefix }}</span> {% endif %}{{ ident.gamer_tag }}</h1>
+    <div class="ext-links">
+      <a class="ext-link" href="https://www.start.gg/{{ ident.slug }}" target="_blank" rel="noopener">Profil start.gg ↗</a>
+    </div>
+  </div>
+  <div class="t-kpis">
+    <div><div class="label">Tournois</div><div class="kpi">{{ s.tournaments }}</div>
+      <div class="small muted">dont {{ s.offline }} en LAN</div></div>
+    <div><div class="label">Meilleur placement</div>
+      {% if s.best %}<div class="kpi">{{ s.best.placement }}<sup>{{ 'er' if s.best.placement == 1 else 'e' }}</sup><span class="kpi-sub"> / {{ s.best.entrants }}</span></div>
+      <div class="small muted">{{ s.best.tournament }}</div>{% else %}<div class="kpi">—</div>{% endif %}</div>
+    <div><div class="label">Classement moyen</div>
+      <div class="kpi">{{ ('top %d %%' % s.avg_top) if s.avg_top is not none else '—' }}</div>
+      <div class="small muted">plus c'est bas, mieux c'est</div></div>
+    <div><div class="label">Sets</div>
+      <div class="kpi {{ 'good' if (s.set_rate or 0) >= 50 else 'bad' }}">{{ s.set_rate if s.set_rate is not none else '—' }} %</div>
+      <div class="small"><span class="good">{{ s.set_wins }}V</span> / <span class="bad">{{ s.set_losses }}D</span></div></div>
+  </div>
+</section>
+
+<div class="widget-bar">
+  <span class="small muted">Mis à jour : {{ fetched_at[:16]|replace('T', ' ') }} UTC ·
+    <form method="post" action="{{ url_for('tournaments_refresh') }}" class="inline-form"><button class="link-btn" type="submit">↻ actualiser</button></form> ·
+    <form method="post" action="{{ url_for('tournaments_unlink') }}" class="inline-form"><button class="link-btn" type="submit">délier</button></form>
+  </span>
+  <button type="button" class="btn-mini" id="editToggle" aria-expanded="false">⚙ Personnaliser</button>
+</div>
+
+{% include "_widget_grid.html" %}
+{% endif %}
+{% endblock %}

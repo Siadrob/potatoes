@@ -15,6 +15,9 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   (500 derniers matchs à chaque import, sans doublons) et des rangs Dan via l'API
   [ewgf.gg](https://ewgf.gg) (facultatif).
 - **Statistiques** : winrate par perso, calendrier d'activité, analyse des matchups.
+- **Tournois** (start.gg) : tes tournois Tekken 8 avec placement et classement relatif,
+  évolution des placements, derniers sets, adversaires, bilan winners / losers, tournois
+  à venir. Widgets personnalisables comme l'accueil.
 - **Entraînement** :
   - *défi du jour* : 10 coups d'un perso qui te bat souvent, avec la vidéo du coup
     (ou un lien vers okizeme.gg quand elle manque), à classer par frames en garde,
@@ -76,8 +79,9 @@ Pour développer, `flask --app app run --debug` recharge le code à chaque modif
 
 ## Configuration (facultative)
 
-Sans configuration, tout fonctionne sauf la récupération des rangs Dan. Pour l'activer,
-crée le fichier de configuration local à partir du modèle :
+Sans configuration, tout fonctionne sauf les rangs Dan (clé ewgf.gg) et la rubrique
+Tournois (token start.gg). Pour les activer, crée le fichier de configuration local à partir
+du modèle :
 
 ```bash
 mkdir -p instance
@@ -90,7 +94,12 @@ Ouvre ensuite `instance/config.py` et colle une clé API ewgf.gg dans `EWGF_API_
 Elle se crée sur [ewgf.gg](https://ewgf.gg) : compte, Paramètres, onglet Developer.
 On peut aussi la passer par la variable d'environnement `EWGF_API_KEY`.
 
-**Une seule clé suffit pour tout le site** : les joueurs, eux, n'entrent que leur ID Tekken.
+Pour la rubrique **Tournois**, colle un token API start.gg dans `STARTGG_TOKEN` : il se crée
+sur [start.gg](https://www.start.gg), profil, Developer Settings, « Create new token ». Chaque
+joueur lie ensuite son profil start.gg depuis la page Tournois (en un clic si son pseudo
+start.gg correspond à son pseudo Tekken).
+
+**Une seule clé (et un seul token) suffit pour tout le site** : les joueurs, eux, n'entrent que leur ID Tekken.
 Le quota gratuit (100 requêtes par heure) est partagé entre tous les joueurs du site,
 ce qui suffit largement pour un petit groupe. Le dossier `instance/` est ignoré par Git :
 la clé n'est jamais commitée.
@@ -169,6 +178,8 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 | L'import wavu échoue (403 ou réseau) | Vérifie ta connexion, puis réessaie plus tard (menu du joueur, « ↻ Actualiser mes matchs »). |
 | « ewgf : erreur invalid_api_key » | La clé dans `instance/config.py` est fausse ou révoquée : régénère-la sur ewgf.gg. |
 | « ewgf : erreur rate_limit_exceeded » | Quota gratuit (100 requêtes par heure) atteint : réessaie l'heure suivante. |
+| « start.gg : token start.gg invalide ou expiré » | Régénère un token sur start.gg et remplace `STARTGG_TOKEN` dans `instance/config.py`. |
+| La page Tournois demande un token | Ajoute `STARTGG_TOKEN` dans `instance/config.py` (voir Configuration), puis relance le site. |
 | Graphiques ou polices absents | Ils sont chargés depuis internet (jsDelivr, Google Fonts) : vérifie la connexion. |
 | Une page affiche « Frame data indisponible » | Le wiki Wavu est injoignable : réessaie plus tard. Les frames déjà téléchargées restent en cache 14 jours. |
 
@@ -181,6 +192,7 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 | `db.py`, `schema.sql` | Base SQLite, schéma et migrations automatiques |
 | `stats.py` | Statistiques de matchs (winrate, séries, sessions, progression) |
 | `wavu.py`, `ewgf.py` | Import des matchs (wank.wavu.wiki) et des rangs Dan (API ewgf.gg) |
+| `startgg.py`, `tournaments.py` | API start.gg et statistiques de tournoi |
 | `framedata.py` | Frame data du wiki Wavu en DataFrames pandas, cache, punitions |
 | `training.py` | Quiz, défi du jour, marges de progression |
 | `widgets.py`, `templates/widgets/` | Catalogue des widgets de l'accueil et leur contenu |
@@ -193,7 +205,7 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 ## Données et crédits
 
 Projet non affilié à Bandai Namco. Matchs : [Wavu Wank](https://wank.wavu.wiki) et
-[ewgf.gg](https://ewgf.gg). Frame data et vidéos des coups : [Wavu Wiki](https://wavu.wiki) ;
+[ewgf.gg](https://ewgf.gg). Tournois : [start.gg](https://www.start.gg). Frame data et vidéos des coups : [Wavu Wiki](https://wavu.wiki) ;
 les coups sans vidéo renvoient vers [okizeme.gg](https://okizeme.gg).
 Illustrations : site officiel Bandai Namco, téléchargées pour un usage local uniquement
 et jamais commitées. Les punisseurs sont calculés automatiquement : vérifie-les en training mode.

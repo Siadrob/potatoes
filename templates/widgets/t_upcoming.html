@@ -1,0 +1,9 @@
+{% for u in upcoming %}
+  <a class="focus-row" href="{{ u.url }}" target="_blank" rel="noopener">
+    <span>{{ u.name }}</span><span class="muted small">{{ 'En ligne' if u.online else (u.city or '') }}</span>
+    <strong class="small">{{ u.date[8:10] }}/{{ u.date[5:7] }}</strong>
+  </a>
+{% else %}
+  <p class="muted small">Aucun tournoi Tekken 8 à venir.</p>
+  <a class="small" href="https://www.start.gg/search/near_me?refinementList%5Bevents.videogame.id%5D=49783" target="_blank" rel="noopener">Trouver un tournoi sur start.gg ↗</a>
+{% endfor %}
