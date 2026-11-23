@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Profil{% endblock %}
+{% block content %}
+<h1>Mon profil</h1>
+<form method="post" class="card form">
+  <div class="row">
+    <label>Pseudo
+      <input type="text" name="name" value="{{ profile['name'] }}">
+    </label>
+    <label>ID joueur Tekken (ou URL ewgf.gg)
+      <input type="text" name="polaris_id" value="{{ profile['polaris_id'] or '' }}" placeholder="ex. 4qLJmf7THeE2">
+    </label>
+  </div>
+  <div class="row">
+    <label>Main
+      <select name="main_char">
+        <option value="">—</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == profile['main_char'] }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Rang visé
+      <select name="goal_rank">
+        <option value="">—</option>
+        {% for r in RANKS %}<option {{ 'selected' if r == profile['goal_rank'] }}>{{ r }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Rating visé (sur ton main)
+      <input type="number" name="goal_rating" min="0" value="{{ profile['goal_rating'] or '' }}" placeholder="ex. 2000">
+    </label>
+  </div>
+  <div class="actions"><button class="btn" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

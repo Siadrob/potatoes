@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_badge, wr, delta, char_filter with context %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Salut {{ profile['name'] }}{% if mine %} · <span class="accent">{{ mine }}</span>{% endif %}</h1>
+  {{ char_filter('dashboard', mine) }}
+</div>
+
+{% if summary.total == 0 %}
+  <div class="card empty">
+    <p>Aucun match enregistré pour l'instant.</p>
+    <p>
+      <a class="btn" href="{{ url_for('import_page') }}">Importer mes matchs classés</a>
+      ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>.
+    </p>
+  </div>
+{% else %}
+
+<section class="tiles">
+  <div class="tile"><div class="label">Matchs</div><div class="value">{{ summary.total }}</div>
+    <div class="sub">{{ summary.wins }} V · {{ summary.losses }} D{% if summary.draws %} · {{ summary.draws }} N{% endif %}</div></div>
+  <div class="tile"><div class="label">Winrate global</div><div class="value">{{ wr(summary.winrate) }}</div>
+    <div class="sub">50 derniers : {{ wr(last50.winrate) }}</div></div>
+  <div class="tile"><div class="label">Série en cours</div>
+    <div class="value">{% if streak[0] == 'W' %}<span class="good">{{ streak[1] }} V</span>{% elif streak[0] == 'L' %}<span class="bad">{{ streak[1] }} D</span>{% else %}–{% endif %}</div>
+    <div class="sub">Record : {{ best_streak }} victoires</div></div>
+  {% if rating_char and current_rating %}
+  <div class="tile"><div class="label">Rating {{ rating_char }}</div><div class="value">{{ current_rating }}</div>
+    <div class="sub">Pic : {{ peak_rating }}{% if profile['goal_rating'] %} · Objectif : {{ profile['goal_rating'] }}{% endif %}</div>
+    {% if profile['goal_rating'] %}<div class="bar"><div style="width: {{ [100, (100 * current_rating / profile['goal_rating'])|round|int]|min }}%"></div></div>{% endif %}
+  </div>
+  {% endif %}
+  {% if last_rank %}
+  <div class="tile"><div class="label">Rang</div><div class="value small">{{ last_rank }}</div>
+    {% if profile['goal_rank'] %}<div class="sub">Objectif : {{ profile['goal_rank'] }}</div>
+    <div class="bar"><div style="width: {{ rank_progress or 0 }}%"></div></div>{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="grid2">
+  {% if rating_points|length > 1 %}
+  <div class="card">
+    <h2>Évolution du rating · {{ rating_char }}</h2>
+    <canvas id="ratingChart" height="220"></canvas>
+  </div>
+  {% endif %}
+  <div class="card">
+    <h2>Winrate glissant (20 matchs)</h2>
+    <canvas id="rollingChart" height="220"></canvas>
+  </div>
+  {% if rank_history|length > 1 %}
+  <div class="card">
+    <h2>Évolution du rang</h2>
+    <canvas id="rankChart" height="220"></canvas>
+  </div>
+  {% endif %}
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Matchups difficiles <small>(5 matchs min.)</small></h2>
+    {% if worst %}
+    <table>
+      <tr><th>Adversaire</th><th>Matchs</th><th>Winrate</th></tr>
+      {% for r in worst %}
+      <tr><td><a href="{{ url_for('matchup_detail', char=r.name) }}">{{ r.name }}</a></td>
+          <td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">Pas encore assez de données.</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Meilleurs matchups</h2>
+    {% if best %}
+    <table>
+      <tr><th>Adversaire</th><th>Matchs</th><th>Winrate</th></tr>
+      {% for r in best %}
+      <tr><td><a href="{{ url_for('matchup_detail', char=r.name) }}">{{ r.name }}</a></td>
+          <td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">Pas encore assez de données.</p>{% endif %}
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Sessions récentes</h2>
+    <table>
+      <tr><th>Jour</th><th>Matchs</th><th>Winrate</th><th>Rating</th><th>Persos</th></tr>
+      {% for s in sessions %}
+      <tr><td>{{ s.day }}</td><td>{{ s.wins }}-{{ s.losses }}</td><td>{{ wr(s.winrate) }}</td>
+          <td>{{ delta(s.rating_delta) }}</td><td class="muted">{{ s.chars|join(', ') }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not mine %}
+  <div class="card">
+    <h2>Mes personnages</h2>
+    <table>
+      <tr><th>Perso</th><th>Matchs</th><th>Winrate</th></tr>
+      {% for r in by_char[:10] %}
+      <tr><td><a href="{{ url_for('dashboard', perso=r.name) }}">{{ r.name }}</a></td>
+          <td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const RANKS = {{ RANKS|tojson }};
+  const ratingPoints = {{ rating_points|tojson }};
+  const rolling = {{ rolling|tojson }};
+  const rankHistory = {{ rank_history|tojson }};
+  const grid = { color: 'rgba(255,255,255,0.07)' };
+  const base = {
+    animation: false,
+    plugins: { legend: { display: false } },
+    elements: { point: { radius: 0 }, line: { borderWidth: 2 } },
+    interaction: { mode: 'index', intersect: false },
+    scales: { x: { ticks: { maxTicksLimit: 8, color: '#9aa3b2' }, grid },
+              y: { ticks: { color: '#9aa3b2' }, grid } },
+  };
+  function chart(id, labels, data, color, extra = {}) {
+    const el = document.getElementById(id);
+    if (!el || typeof Chart === 'undefined') return;
+    new Chart(el, {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, tension: 0.2 }] },
+      options: { ...base, ...extra, scales: { ...base.scales, ...(extra.scales || {}) } },
+    });
+  }
+  chart('ratingChart', ratingPoints.map(p => p.date.slice(0, 10)), ratingPoints.map(p => p.rating), '#f5a524');
+  chart('rollingChart', rolling.map((_, i) => i + 1), rolling, '#4cc38a',
+        { scales: { y: { min: 0, max: 100, ticks: { color: '#9aa3b2', callback: v => v + ' %' }, grid } } });
+  chart('rankChart', rankHistory.map(p => p.date), rankHistory.map(p => p.level), '#e5484d',
+        { scales: { y: { ticks: { color: '#9aa3b2', stepSize: 1, callback: v => RANKS[v] ?? '' }, grid } } });
+</script>
+{% endblock %}

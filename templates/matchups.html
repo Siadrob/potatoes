@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import wr, char_filter with context %}
+{% block title %}Matchups{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Matchups{% if mine %} · <span class="accent">{{ mine }}</span>{% endif %}</h1>
+  {{ char_filter('matchups', mine, {'tri': sort}) }}
+</div>
+
+<p class="muted">
+  Trier par :
+  <a href="{{ url_for('matchups', perso=mine, tri='matchs') }}" class="{{ 'active' if sort != 'winrate' }}">nombre de matchs</a> ·
+  <a href="{{ url_for('matchups', perso=mine, tri='winrate') }}" class="{{ 'active' if sort == 'winrate' }}">pire winrate</a>
+</p>
+
+{% if rows %}
+<div class="card table-wrap">
+<table>
+  <tr><th>Adversaire</th><th>Matchs</th><th>V</th><th>D</th><th>Winrate</th><th></th><th>Notes</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td><a href="{{ url_for('matchup_detail', char=r.name) }}">{{ r.name }}</a></td>
+    <td>{{ r.total }}</td><td>{{ r.wins }}</td><td>{{ r.losses }}</td>
+    <td>{{ wr(r.winrate) }}</td>
+    <td class="barcell"><div class="bar"><div style="width: {{ r.winrate or 0 }}%"></div></div></td>
+    <td>{{ '📝' if r.name in noted }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p>Aucun match pour l'instant.</p>
+{% endif %}
+{% endblock %}

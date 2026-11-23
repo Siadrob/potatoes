@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_badge, wr, delta %}
+{% block title %}Matchs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Historique des matchs</h1>
+  <form class="filter" method="get">
+    <label>Mon perso
+      <select name="perso" onchange="this.form.submit()">
+        <option value="">Tous</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == mine }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Adversaire
+      <select name="adversaire" onchange="this.form.submit()">
+        <option value="">Tous</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == opp }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+</div>
+
+<p class="muted">{{ summary.total }} matchs · {{ summary.wins }} V / {{ summary.losses }} D · winrate {{ wr(summary.winrate) }}</p>
+
+{% if matches %}
+<div class="card table-wrap">
+<table>
+  <tr><th>Date</th><th></th><th>Mon perso</th><th>Score</th><th>Adversaire</th><th>Joueur</th><th>Rating</th><th>Rang</th><th>Notes</th><th></th></tr>
+  {% for m in matches %}
+  <tr>
+    <td class="nowrap">{{ m['played_at'] }}</td>
+    <td>{{ result_badge(m['result']) }}</td>
+    <td>{{ m['my_char'] }}</td>
+    <td>{% if m['rounds_won'] is not none %}{{ m['rounds_won'] }}-{{ m['rounds_lost'] }}{% endif %}</td>
+    <td><a href="{{ url_for('matchup_detail', char=m['opp_char']) }}">{{ m['opp_char'] }}</a></td>
+    <td class="muted">{{ m['opp_name'] or '' }}</td>
+    <td class="nowrap">{% if m['rating'] %}{{ m['rating'] }} {{ delta(m['rating_change']) }}{% endif %}</td>
+    <td>{{ m['rank'] or '' }}</td>
+    <td class="notes">{{ m['notes'] or '' }}</td>
+    <td class="nowrap"><a href="{{ url_for('match_edit', match_id=m['id']) }}">Modifier</a></td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ url_for('match_list', perso=mine, adversaire=opp, page=page-1) }}">← Plus récents</a>{% endif %}
+  <span>Page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_for('match_list', perso=mine, adversaire=opp, page=page+1) }}">Plus anciens →</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<p>Aucun match. <a href="{{ url_for('match_new') }}">Ajouter un match</a></p>
+{% endif %}
+{% endblock %}

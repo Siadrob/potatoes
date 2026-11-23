@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier' if editing else 'Nouveau' }} match{% endblock %}
+{% block content %}
+<h1>{{ 'Modifier le match' if editing else 'Nouveau match' }}</h1>
+
+<form method="post" class="card form">
+  <div class="row">
+    <label>Date
+      <input type="text" name="played_at" value="{{ match['played_at'] or '' }}" placeholder="AAAA-MM-JJ" required>
+    </label>
+    <label>Mon perso
+      <select name="my_char" required>
+        <option value="">—</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == match['my_char'] }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Perso adverse
+      <select name="opp_char" required autofocus>
+        <option value="">—</option>
+        {% for c in CHARACTERS %}<option {{ 'selected' if c == match['opp_char'] }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Pseudo adverse
+      <input type="text" name="opp_name" value="{{ match['opp_name'] or '' }}">
+    </label>
+  </div>
+
+  <div class="row">
+    <fieldset class="result-choice">
+      <legend>Résultat</legend>
+      {% for value, label in [('W', 'Victoire'), ('L', 'Défaite'), ('D', 'Nul')] %}
+      <label class="pill {{ value }}"><input type="radio" name="result" value="{{ value }}" {{ 'checked' if match['result'] == value }} required> {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+    <label>Rounds gagnés <input type="number" name="rounds_won" min="0" max="5" value="{{ match['rounds_won'] if match['rounds_won'] is not none else '' }}"></label>
+    <label>Rounds perdus <input type="number" name="rounds_lost" min="0" max="5" value="{{ match['rounds_lost'] if match['rounds_lost'] is not none else '' }}"></label>
+    <label>Rang après le match
+      <select name="rank">
+        <option value="">—</option>
+        {% for r in RANKS %}<option {{ 'selected' if r == match['rank'] }}>{{ r }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <label>Notes (ce qui a marché, ce qui m'a puni…)
+    <textarea name="notes" rows="3">{{ match['notes'] or '' }}</textarea>
+  </label>
+
+  <div class="actions">
+    <button type="submit" class="btn">Enregistrer</button>
+    {% if not editing %}<button type="submit" name="again" value="1" class="btn ghost">Enregistrer et en ajouter un autre</button>{% endif %}
+  </div>
+</form>
+
+{% if editing %}
+<form method="post" action="{{ url_for('match_delete', match_id=match_id) }}" class="danger-zone">
+  <label><input type="checkbox" required> Je confirme la suppression</label>
+  <button type="submit" class="btn danger">Supprimer ce match</button>
+</form>
+{% endif %}
+{% endblock %}

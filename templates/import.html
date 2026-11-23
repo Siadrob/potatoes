@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Importer{% endblock %}
+{% block content %}
+<h1>Importer mes matchs classés</h1>
+<div class="card form">
+  <p>
+    Les matchs classés en ligne sont récupérés depuis
+    <a href="https://wank.wavu.wiki" target="_blank" rel="noopener">wank.wavu.wiki</a>
+    (la même source qu'ewgf.gg). Chaque import récupère tes 500 derniers matchs et
+    n'ajoute que les nouveaux : relance-le après chaque session pour garder tout ton historique.
+  </p>
+  <form method="post">
+    <label>ID joueur Tekken ou URL de ton profil ewgf.gg
+      <input type="text" name="polaris_id" value="{{ profile['polaris_id'] or '' }}"
+             placeholder="https://www.ewgf.gg/player/4qLJmf7THeE2" required>
+    </label>
+    <div class="actions"><button class="btn" type="submit">Importer</button></div>
+  </form>
+  <p class="muted">
+    Les heures sont en UTC. Ton rang en jeu (Dan) n'est pas disponible dans ces données :
+    l'évolution est suivie avec le rating de chaque personnage.
+  </p>
+</div>
+{% endblock %}

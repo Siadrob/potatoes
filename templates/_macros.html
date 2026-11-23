@@ -1,0 +1,25 @@
+{% macro result_badge(r) -%}
+  {%- if r == 'W' %}<span class="badge win">V</span>
+  {%- elif r == 'L' %}<span class="badge loss">D</span>
+  {%- else %}<span class="badge draw">N</span>{% endif -%}
+{%- endmacro %}
+
+{% macro wr(value) -%}
+  {%- if value is none %}–{% else %}<span class="{{ 'good' if value >= 50 else 'bad' }}">{{ value }} %</span>{% endif -%}
+{%- endmacro %}
+
+{% macro delta(value) -%}
+  {%- if value is none %}–{% else %}<span class="{{ 'good' if value >= 0 else 'bad' }}">{{ '%+d' % value }}</span>{% endif -%}
+{%- endmacro %}
+
+{% macro char_filter(endpoint, mine, extra={}) -%}
+<form class="filter" method="get" action="{{ url_for(endpoint) }}">
+  {% for k, v in extra.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <label>Mon perso
+    <select name="perso" onchange="this.form.submit()">
+      <option value="">Tous</option>
+      {% for c in CHARACTERS %}<option {{ 'selected' if c == mine }}>{{ c }}</option>{% endfor %}
+    </select>
+  </label>
+</form>
+{%- endmacro %}

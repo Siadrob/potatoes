@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_badge, wr, delta %}
+{% block title %}Contre {{ char }}{% endblock %}
+{% block content %}
+<h1>Contre <span class="accent">{{ char }}</span></h1>
+
+<section class="tiles">
+  <div class="tile"><div class="label">Matchs</div><div class="value">{{ summary.total }}</div>
+    <div class="sub">{{ summary.wins }} V · {{ summary.losses }} D</div></div>
+  <div class="tile"><div class="label">Winrate</div><div class="value">{{ wr(summary.winrate) }}</div>
+    <div class="sub">20 derniers : {{ wr(last20.winrate) }}</div></div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Mes notes sur ce matchup</h2>
+    <form method="post">
+      <textarea name="notes" rows="10" placeholder="Coups à punir, comment gérer la pression, ce qu'il ne faut pas faire…">{{ note['notes'] if note else '' }}</textarea>
+      <div class="actions">
+        <button class="btn" type="submit">Enregistrer</button>
+        {% if note %}<span class="muted">Mis à jour : {{ note['updated_at'] }}</span>{% endif %}
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Par perso joué</h2>
+    <table>
+      <tr><th>Mon perso</th><th>Matchs</th><th>Winrate</th></tr>
+      {% for r in by_char %}
+      <tr><td>{{ r.name }}</td><td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</section>
+
+{% if matches %}
+<div class="card table-wrap">
+  <h2>Derniers matchs</h2>
+  <table>
+    <tr><th>Date</th><th></th><th>Mon perso</th><th>Score</th><th>Joueur</th><th>Rating</th><th>Notes</th></tr>
+    {% for m in matches %}
+    <tr>
+      <td class="nowrap">{{ m['played_at'] }}</td><td>{{ result_badge(m['result']) }}</td>
+      <td>{{ m['my_char'] }}</td>
+      <td>{% if m['rounds_won'] is not none %}{{ m['rounds_won'] }}-{{ m['rounds_lost'] }}{% endif %}</td>
+      <td class="muted">{{ m['opp_name'] or '' }}</td>
+      <td class="nowrap">{% if m['rating'] %}{{ m['rating'] }} {{ delta(m['rating_change']) }}{% endif %}</td>
+      <td class="notes">{{ m['notes'] or '' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p><a href="{{ url_for('match_list', adversaire=char) }}">Voir tout l'historique contre {{ char }} →</a></p>
+</div>
+{% endif %}
+{% endblock %}
