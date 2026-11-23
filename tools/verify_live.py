@@ -170,6 +170,13 @@ def verify(profile, app):
     if steam:
         check(tag, "lien Steam", f"steamcommunity.com/profiles/{steam}" in raw)
     check(tag, "lien ewgf.gg", f"ewgf.gg/player/{pid}" in raw)
+    if CFG.get("TWITCH_CLIENT_ID") and CFG.get("TWITCH_CLIENT_SECRET"):
+        cards = raw.count('class="stream-card"')
+        check(tag, f"hub : lives Twitch affichés ({cards})",
+              cards > 0 or "Personne n'est en live" in raw, "aucune carte ni message")
+        tagged = re.findall(r'class="char-tag">([^<]+)<', raw)
+        check(tag, "hub : badge perso seulement sur les lives du perso affiché",
+              all(c == main for c in tagged), str(tagged))
 
     # Statistiques : bilan de chaque perso
     stats = text_of(client.get("/stats?perso=tous").get_data(as_text=True))
