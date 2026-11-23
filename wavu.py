@@ -137,20 +137,7 @@ def parse_matches(html, polaris_id):
             "rounds_lost": b,
             "rating": left.get("rating"),
             "rating_change": left.get("change"),
-            "external_id": f"wavu:{row['battle_at']}:{right.get('id', '')}",
+            "source": "wavu",
+            "external_id": f"battle:{row['battle_at']}:{right.get('id', '')}",
         })
     return matches
-
-
-def import_matches(db, matches):
-    """Insère les matchs absents. Retourne le nombre de nouveaux matchs."""
-    before = db.total_changes
-    db.executemany(
-        """INSERT OR IGNORE INTO matches
-           (played_at, my_char, opp_char, opp_name, result, rounds_won, rounds_lost,
-            rating, rating_change, source, external_id)
-           VALUES (:played_at, :my_char, :opp_char, :opp_name, :result, :rounds_won,
-                   :rounds_lost, :rating, :rating_change, 'wavu', :external_id)""",
-        matches)
-    db.commit()
-    return db.total_changes - before

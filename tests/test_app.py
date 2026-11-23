@@ -130,9 +130,9 @@ def test_import_route_is_idempotent(tmp_path):
 
     r = client.post("/import", data={"polaris_id": f"https://www.ewgf.gg/player/{ME}"},
                     follow_redirects=True)
-    assert "3 matchs lus, 3 nouveaux" in r.get_data(as_text=True)
+    assert "wavu : 3 matchs classés lus, 3 nouveaux" in r.get_data(as_text=True)
     r = client.post("/import", data={"polaris_id": ME}, follow_redirects=True)
-    assert "3 matchs lus, 0 nouveaux" in r.get_data(as_text=True)
+    assert "wavu : 3 matchs classés lus, 0 nouveaux" in r.get_data(as_text=True)
     assert calls == [ME, ME]
 
     with app.app_context():
@@ -142,7 +142,7 @@ def test_import_route_is_idempotent(tmp_path):
     # Un perso inconnu du roster apparaît quand même dans l'app.
     assert client.get("/matchups/Nouveau Perso").status_code == 200
     page = client.get("/").get_data(as_text=True)
-    assert "Rating Leroy" in page
+    assert "μ 1900" in page
 
 
 def test_import_rejects_bad_id(client):
@@ -169,7 +169,7 @@ def test_add_edit_delete_match(client, app):
         match_id = get_db().execute("SELECT id FROM matches").fetchone()[0]
 
     page = client.get("/").get_data(as_text=True)
-    assert "Garyu" in page and "100.0 %" in page
+    assert "Garyu" in page and "100.0 %" in page and "LEROY" not in page
 
     # Le formulaire suivant reprend le perso et le rang.
     form = client.get("/matchs/nouveau").get_data(as_text=True)
@@ -204,11 +204,11 @@ def test_matchup_notes(client):
 
 
 def test_profile(client):
-    r = client.post("/profil", data={"name": "Sia", "main_char": "Leroy", "goal_rank": "Tekken King",
+    r = client.post("/profil", data={"name": "Sia", "mains": ["Bob", "Leroy"], "goal_rank": "Tekken King",
                                      "goal_rating": "2000",
                                      "polaris_id": "https://www.ewgf.gg/player/4qLJmf7THeE2"},
                     follow_redirects=True)
-    assert "Salut Sia" in r.get_data(as_text=True)
+    assert "<h1>Sia</h1>" in r.get_data(as_text=True)
     assert client.post("/profil", data={"goal_rating": "beaucoup"}).status_code == 400
 
 
@@ -216,3 +216,118 @@ def test_profile(client):
                                  "/matchs/nouveau", "/matchs?perso=Leroy&adversaire=Jin&page=2"])
 def test_pages_render(client, url):
     assert client.get(url).status_code == 200
+
+
+# ---------- tableau de bord ----------
+
+def test_activity_calendar():
+    from datetime import date
+    ms = [M("W", played_at="2026-11-20 10:00"), M("L", played_at="2026-11-20 11:00"),
+          M("W", played_at="2026-11-18"), M("W", played_at="2026-01-01")]
+    act = stats.activity(ms, date(2026, 11, 23), weeks=13)
+    assert len(act["columns"]) == 13
+    assert all(len(c["cells"]) == 7 for c in act["columns"])
+    assert act["columns"][-1]["cells"][0]["day"] == "2026-11-23"  # lundi de la dernière semaine
+    cells = {c["day"]: c for col in act["columns"] for c in col["cells"]}
+    assert cells["2026-11-20"]["total"] == 2 and cells["2026-11-20"]["cls"] == "h4"
+    assert cells["2026-11-24"]["future"]
+    # Le match de janvier est hors de la fenêtre.
+    assert (act["total"], act["active_days"], act["per_day"]) == (3, 2, 1.5)
+
+
+def test_matchup_chart_sorted_and_colored():
+    ms = ([M("W", opp_char="King")] * 3 + [M("L", opp_char="Jin")] * 3
+          + [M("W", opp_char="Lee"), M("L", opp_char="Lee")] + [M("W", opp_char="Kuma")])
+    rows, hidden = stats.matchup_chart(ms, min_games=2)
+    assert [(r["name"], r["cls"]) for r in rows] == [("King", "hi"), ("Lee", "mid"), ("Jin", "lo")]
+    assert hidden == 1
+
+
+def test_dashboard_focuses_on_mains(tmp_path):
+    html = wavu_page([row(1795380992, "3-1"), row(1795380900, "3-0"),
+                      row(1795380800, "1-3", left_char="Bob", rating=1430, change="-8")])
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "WAVU_FETCH": lambda pid: html})
+    client = app.test_client()
+    client.post("/import", data={"polaris_id": ME})
+    client.post("/profil", data={"name": "Sia", "mains": ["Bob", "Leroy"]})
+
+    page = client.get("/").get_data(as_text=True)
+    # Leroy (le plus joué) est sélectionné par défaut, puis Bob.
+    assert '<h1 class="section-title">Leroy</h1>' in page
+    assert page.index('class="chip-name">Leroy') < page.index('class="chip-name">Bob')
+    assert "μ 1430" in page
+
+    bob = client.get("/?perso=Bob").get_data(as_text=True)
+    assert '<h1 class="section-title">Bob</h1>' in bob
+    assert "Tous les persos</h1>" in client.get("/?perso=tous").get_data(as_text=True)
+
+    day = client.get("/matchs?jour=2026-11-22&perso=Leroy").get_data(as_text=True)
+    assert "2 matchs" in day
+
+
+def test_old_database_is_migrated(tmp_path):
+    import sqlite3
+    path = tmp_path / "old.db"
+    with sqlite3.connect(path) as conn:
+        conn.executescript("""CREATE TABLE profile (id INTEGER PRIMARY KEY CHECK (id = 1),
+            name TEXT NOT NULL DEFAULT 'Joueur', polaris_id TEXT, main_char TEXT,
+            goal_rank TEXT, goal_rating INTEGER);
+            INSERT INTO profile (id, main_char) VALUES (1, 'Leroy');""")
+    app = create_app({"TESTING": True, "DATABASE": str(path)})
+    with app.app_context():
+        assert get_db().execute("SELECT mains FROM profile").fetchone()[0] == "Leroy"
+
+
+# ---------- ewgf ----------
+
+def battle(ts_iso, p1_id, p2_id, winner, battle_type="RANKED_BATTLE", p1_char="Leroy", p2_char="Kazuya"):
+    return {"battle_at": ts_iso, "battle_type": battle_type, "winner": winner,
+            "p1_tekken_id": p1_id, "p1_name": "A", "p1_char": p1_char, "p1_dan_rank": "God of Destruction IV",
+            "p1_rounds_won": 3 if winner == 1 else 1,
+            "p2_tekken_id": p2_id, "p2_name": "B", "p2_char": p2_char, "p2_dan_rank": "Tekken God",
+            "p2_rounds_won": 3 if winner == 2 else 1}
+
+
+def test_parse_ewgf_battles_keeps_ranked_only():
+    import ewgf
+    ms = ewgf.parse_battles([
+        battle("2026-11-22T20:56:32Z", ME, "OPPxxxxx0001", 1),
+        battle("2026-11-22T20:50:00Z", "OPPxxxxx0002", ME, 1, p1_char="King", p2_char="Bob"),
+        battle("2026-11-22T20:40:00Z", ME, "OPPxxxxx0003", 1, battle_type="QUICK_BATTLE"),
+    ], ME)
+    assert len(ms) == 2
+    assert (ms[0]["result"], ms[0]["rank"], ms[0]["opp_rank"]) == ("W", "God of Destruction IV", "Tekken God")
+    assert ms[0]["external_id"] == "battle:1795380992:OPPxxxxx0001"
+    assert (ms[1]["my_char"], ms[1]["opp_char"], ms[1]["result"]) == ("Bob", "King", "L")
+    assert ms[1]["rank"] == "Tekken God"
+
+
+def test_import_merges_wavu_and_ewgf(tmp_path):
+    html = wavu_page([row(1795380992, "3-1")])
+    battles = [battle("2026-11-22T20:56:32Z", ME, "OPPxxxxx0001", 1),      # même match que wavu
+               battle("2026-11-21T10:00:00Z", ME, "OPPxxxxx0009", 2)]     # absent de wavu
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "WAVU_FETCH": lambda pid: html,
+                      "EWGF_FETCH": lambda pid, key: battles, "EWGF_API_KEY": "ewgf_test"})
+    client = app.test_client()
+    text = client.post("/import", data={"polaris_id": ME}, follow_redirects=True).get_data(as_text=True)
+    assert "ewgf : 2 matchs classés lus (rangs Dan), 1 nouveaux" in text
+    with app.app_context():
+        rows = get_db().execute("SELECT rating, rank, opp_rank FROM matches ORDER BY played_at DESC").fetchall()
+    assert [tuple(r) for r in rows] == [(1900, "God of Destruction IV", "Tekken God"),
+                                         (None, "God of Destruction IV", "Tekken God")]
+    assert "God of Destruction IV" in client.get("/").get_data(as_text=True)
+
+
+def test_ewgf_error_is_reported(tmp_path):
+    import ewgf
+
+    def failing(pid, key):
+        raise ewgf.EwgfError("invalid_api_key", "Invalid API key")
+
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "t.db"),
+                      "WAVU_FETCH": lambda pid: wavu_page([]),
+                      "EWGF_FETCH": failing, "EWGF_API_KEY": "ewgf_bad"})
+    text = app.test_client().post("/import", data={"polaris_id": ME}, follow_redirects=True).get_data(as_text=True)
+    assert "invalid_api_key" in text

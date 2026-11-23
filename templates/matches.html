@@ -5,6 +5,7 @@
 <div class="page-head">
   <h1>Historique des matchs</h1>
   <form class="filter" method="get">
+    {% if day %}<input type="hidden" name="jour" value="{{ day }}">{% endif %}
     <label>Mon perso
       <select name="perso" onchange="this.form.submit()">
         <option value="">Tous</option>
@@ -20,12 +21,13 @@
   </form>
 </div>
 
+{% if day %}<p class="chip-filter">Jour : <strong>{{ day }}</strong> <a href="{{ url_for('match_list', perso=mine, adversaire=opp) }}" title="Retirer le filtre">✕</a></p>{% endif %}
 <p class="muted">{{ summary.total }} matchs · {{ summary.wins }} V / {{ summary.losses }} D · winrate {{ wr(summary.winrate) }}</p>
 
 {% if matches %}
 <div class="card table-wrap">
 <table>
-  <tr><th>Date</th><th></th><th>Mon perso</th><th>Score</th><th>Adversaire</th><th>Joueur</th><th>Rating</th><th>Rang</th><th>Notes</th><th></th></tr>
+  <tr><th>Date</th><th></th><th>Mon perso</th><th>Score</th><th>Adversaire</th><th>Joueur</th><th>Rating</th><th>Rang</th><th>Rang adv.</th><th>Notes</th><th></th></tr>
   {% for m in matches %}
   <tr>
     <td class="nowrap">{{ m['played_at'] }}</td>
@@ -35,7 +37,8 @@
     <td><a href="{{ url_for('matchup_detail', char=m['opp_char']) }}">{{ m['opp_char'] }}</a></td>
     <td class="muted">{{ m['opp_name'] or '' }}</td>
     <td class="nowrap">{% if m['rating'] %}{{ m['rating'] }} {{ delta(m['rating_change']) }}{% endif %}</td>
-    <td>{{ m['rank'] or '' }}</td>
+    <td class="small">{{ m['rank'] or '' }}</td>
+    <td class="small muted">{{ m['opp_rank'] or '' }}</td>
     <td class="notes">{{ m['notes'] or '' }}</td>
     <td class="nowrap"><a href="{{ url_for('match_edit', match_id=m['id']) }}">Modifier</a></td>
   </tr>
@@ -44,9 +47,9 @@
 </div>
 {% if pages > 1 %}
 <nav class="pager">
-  {% if page > 1 %}<a href="{{ url_for('match_list', perso=mine, adversaire=opp, page=page-1) }}">← Plus récents</a>{% endif %}
+  {% if page > 1 %}<a href="{{ url_for('match_list', perso=mine, adversaire=opp, jour=day, page=page-1) }}">← Plus récents</a>{% endif %}
   <span>Page {{ page }} / {{ pages }}</span>
-  {% if page < pages %}<a href="{{ url_for('match_list', perso=mine, adversaire=opp, page=page+1) }}">Plus anciens →</a>{% endif %}
+  {% if page < pages %}<a href="{{ url_for('match_list', perso=mine, adversaire=opp, jour=day, page=page+1) }}">Plus anciens →</a>{% endif %}
 </nav>
 {% endif %}
 {% else %}

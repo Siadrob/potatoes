@@ -23,6 +23,9 @@ RANKS = [
     "Mighty Ruler", "Flame Ruler", "Battle Ruler", "Fujin", "Raijin", "Kishin",
     "Bushin", "Tekken King", "Tekken Emperor", "Tekken God",
     "Tekken God Supreme", "God of Destruction",
+    "God of Destruction I", "God of Destruction II", "God of Destruction III",
+    "God of Destruction IV", "God of Destruction V", "God of Destruction VI",
+    "God of Destruction VII", "God of Destruction ∞",
 ]
 
 

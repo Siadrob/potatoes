@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     name TEXT NOT NULL DEFAULT 'Joueur',
     polaris_id TEXT,                     -- ID joueur Tekken (ex. 4qLJmf7THeE2)
-    main_char TEXT,
+    main_char TEXT,                      -- obsolète, remplacé par `mains`
+    mains TEXT,                          -- persos principaux, séparés par des virgules
     goal_rank TEXT,
     goal_rating INTEGER
 );
@@ -18,12 +19,13 @@ CREATE TABLE IF NOT EXISTS matches (
     result TEXT NOT NULL CHECK (result IN ('W', 'L', 'D')),
     rounds_won INTEGER,
     rounds_lost INTEGER,
-    rank TEXT,                           -- rang en jeu après le match (saisie manuelle)
+    rank TEXT,                           -- rang Dan au moment du match (ewgf ou saisie manuelle)
+    opp_rank TEXT,                       -- rang Dan de l'adversaire (ewgf)
     rating INTEGER,                      -- rating glicko après le match (import wavu)
     rating_change INTEGER,
     notes TEXT,
     source TEXT NOT NULL DEFAULT 'manuel',
-    external_id TEXT UNIQUE,             -- évite les doublons lors des imports
+    external_id TEXT UNIQUE,             -- 'battle:<timestamp>:<id adverse>', commun à wavu et ewgf
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

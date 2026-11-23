@@ -104,3 +104,84 @@ def sessions(matches, limit=10):
                     "chars": sorted({m["my_char"] for m in ms}),
                     "rating_delta": sum(changes) if changes else None})
     return out
+
+
+# ---------- Vues "tableau de bord" ----------
+
+def wr_class(value):
+    """Classe de couleur d'un winrate : bon (> 52 %), moyen (48-52 %), mauvais (< 48 %)."""
+    if value is None:
+        return "none"
+    return "hi" if value > 52 else "mid" if value >= 48 else "lo"
+
+
+def heat_class(value):
+    """Palier de couleur du calendrier d'activité."""
+    if value is None:
+        return "h0"
+    for limit, cls in ((30, "h1"), (40, "h2"), (50, "h3"), (60, "h4")):
+        if value < limit:
+            return cls
+    return "h5"
+
+
+def character_cards(matches, mains):
+    """Une carte par perso joué : bilan + dernier rating. Les mains d'abord."""
+    last_rating, last_rank = {}, {}
+    for m in matches:
+        if m["rating"] is not None:
+            last_rating[m["my_char"]] = m["rating"]
+        if m["rank"]:
+            last_rank[m["my_char"]] = m["rank"]
+    cards = [{**row, "rating": last_rating.get(row["name"]), "rank": last_rank.get(row["name"]),
+              "is_main": row["name"] in mains}
+             for row in by_key(matches, "my_char")]
+    order = {name: i for i, name in enumerate(mains)}
+    return sorted(cards, key=lambda c: (order.get(c["name"], len(order)), -c["total"]))
+
+
+def activity(matches, end, weeks=13):
+    """Calendrier : colonnes = semaines (lundi→dimanche), terminé par la semaine de `end`."""
+    from datetime import timedelta
+
+    per_day = defaultdict(list)
+    for m in matches:
+        per_day[m["played_at"][:10]].append(m)
+
+    start = end - timedelta(days=end.weekday() + 7 * (weeks - 1))
+    columns, cells_in_range = [], []
+    for w in range(weeks):
+        week_start = start + timedelta(weeks=w)
+        cells = []
+        for d in range(7):
+            day = week_start + timedelta(days=d)
+            ms = per_day.get(day.isoformat(), [])
+            c = _count(ms)
+            cell = {"day": day.isoformat(), "future": day > end, **c,
+                    "cls": heat_class(c["winrate"])}
+            cells.append(cell)
+            if not cell["future"]:
+                cells_in_range.append(cell)
+        month = week_start.strftime("%m") if w == 0 or week_start.day <= 7 else None
+        columns.append({"month": month, "cells": cells})
+
+    played = [c for c in cells_in_range if c["total"]]
+    total = sum(c["total"] for c in played)
+    wins = sum(c["wins"] for c in played)
+    busiest = max(played, key=lambda c: c["total"], default=None)
+    return {
+        "columns": columns,
+        "total": total, "wins": wins, "losses": sum(c["losses"] for c in played),
+        "winrate": winrate(wins, total), "active_days": len(played),
+        "per_day": round(total / len(played), 1) if played else None,
+        "busiest": busiest,
+    }
+
+
+def matchup_chart(matches, min_games=3):
+    """Winrate par perso adverse, du meilleur au pire, pour le graphique en barres."""
+    rows = [r for r in by_key(matches, "opp_char") if r["total"] >= min_games]
+    for r in rows:
+        r["cls"] = wr_class(r["winrate"])
+    hidden = sum(1 for r in by_key(matches, "opp_char") if r["total"] < min_games)
+    return sorted(rows, key=lambda r: (-r["winrate"], -r["total"])), hidden

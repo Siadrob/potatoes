@@ -11,13 +11,14 @@
       <input type="text" name="polaris_id" value="{{ profile['polaris_id'] or '' }}" placeholder="ex. 4qLJmf7THeE2">
     </label>
   </div>
+  {% set my_mains = (profile['mains'] or '').split(',') %}
+  <fieldset class="mains-pick">
+    <legend>Mes mains <span class="muted small">(mis en avant sur le tableau de bord, le plus joué en premier)</span></legend>
+    {% for c in CHARACTERS %}
+    <label class="pick"><input type="checkbox" name="mains" value="{{ c }}" {{ 'checked' if c in my_mains }}> {{ c }}</label>
+    {% endfor %}
+  </fieldset>
   <div class="row">
-    <label>Main
-      <select name="main_char">
-        <option value="">—</option>
-        {% for c in CHARACTERS %}<option {{ 'selected' if c == profile['main_char'] }}>{{ c }}</option>{% endfor %}
-      </select>
-    </label>
     <label>Rang visé
       <select name="goal_rank">
         <option value="">—</option>

@@ -12,6 +12,10 @@
   {%- if value is none %}–{% else %}<span class="{{ 'good' if value >= 0 else 'bad' }}">{{ '%+d' % value }}</span>{% endif -%}
 {%- endmacro %}
 
+{% macro wlbar(wins, total) -%}
+  <div class="wlbar{{ ' empty' if not total }}"><div style="width: {{ (100 * wins / total) if total else 0 }}%"></div></div>
+{%- endmacro %}
+
 {% macro char_filter(endpoint, mine, extra={}) -%}
 <form class="filter" method="get" action="{{ url_for(endpoint) }}">
   {% for k, v in extra.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}

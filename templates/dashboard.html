@@ -1,144 +1,260 @@
 {% extends "base.html" %}
-{% from "_macros.html" import result_badge, wr, delta, char_filter with context %}
-{% block title %}Tableau de bord{% endblock %}
+{% from "_macros.html" import wr, delta, wlbar %}
+{% set MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'] %}
+{% block title %}{{ selected or 'Tableau de bord' }}{% endblock %}
 {% block content %}
-<div class="page-head">
-  <h1>Salut {{ profile['name'] }}{% if mine %} · <span class="accent">{{ mine }}</span>{% endif %}</h1>
-  {{ char_filter('dashboard', mine) }}
-</div>
 
-{% if summary.total == 0 %}
+{# ---------- En-tête joueur ---------- #}
+<section class="card hero">
+  <div class="avatar">{{ (profile['name'] or '?')[:1]|upper }}</div>
+  <div class="hero-id">
+    <h1>{{ profile['name'] }}</h1>
+    {% if profile['polaris_id'] %}
+      {% set pid = profile['polaris_id'] %}
+      <div class="mono muted">{{ pid[:4] }}-{{ pid[4:8] }}-{{ pid[8:] }}</div>
+    {% endif %}
+    {% if last_seen %}<div class="muted small">Dernier match : {{ last_seen }} UTC</div>{% endif %}
+  </div>
+  <div class="hero-mains">
+    {% for c in main_cards %}
+    <a class="main-chip {{ 'active' if c.name == selected }}" href="{{ url_for('dashboard', perso=c.name) }}">
+      <span class="chip-name">{{ c.name }}</span>
+      <span class="chip-rating">{{ ('μ %d' % c.rating) if c.rating else '—' }}</span>
+      {% if c.rank %}<span class="chip-rank">{{ c.rank }}</span>{% endif %}
+      <span class="chip-wr {{ wr_class(c.winrate) }}">{{ c.winrate }} %</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% if profile['polaris_id'] %}
+  <form method="post" action="{{ url_for('import_page') }}" class="hero-action">
+    <input type="hidden" name="polaris_id" value="{{ profile['polaris_id'] }}">
+    <button class="btn" type="submit">↻ Actualiser mes matchs</button>
+  </form>
+  {% endif %}
+</section>
+
+{% if not cards %}
   <div class="card empty">
     <p>Aucun match enregistré pour l'instant.</p>
-    <p>
-      <a class="btn" href="{{ url_for('import_page') }}">Importer mes matchs classés</a>
-      ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>.
-    </p>
+    <p><a class="btn" href="{{ url_for('import_page') }}">Importer mes matchs classés</a>
+       ou <a href="{{ url_for('match_new') }}">ajouter un match à la main</a>.</p>
   </div>
 {% else %}
 
-<section class="tiles">
-  <div class="tile"><div class="label">Matchs</div><div class="value">{{ summary.total }}</div>
-    <div class="sub">{{ summary.wins }} V · {{ summary.losses }} D{% if summary.draws %} · {{ summary.draws }} N{% endif %}</div></div>
-  <div class="tile"><div class="label">Winrate global</div><div class="value">{{ wr(summary.winrate) }}</div>
-    <div class="sub">50 derniers : {{ wr(last50.winrate) }}</div></div>
-  <div class="tile"><div class="label">Série en cours</div>
-    <div class="value">{% if streak[0] == 'W' %}<span class="good">{{ streak[1] }} V</span>{% elif streak[0] == 'L' %}<span class="bad">{{ streak[1] }} D</span>{% else %}–{% endif %}</div>
-    <div class="sub">Record : {{ best_streak }} victoires</div></div>
-  {% if rating_char and current_rating %}
-  <div class="tile"><div class="label">Rating {{ rating_char }}</div><div class="value">{{ current_rating }}</div>
-    <div class="sub">Pic : {{ peak_rating }}{% if profile['goal_rating'] %} · Objectif : {{ profile['goal_rating'] }}{% endif %}</div>
-    {% if profile['goal_rating'] %}<div class="bar"><div style="width: {{ [100, (100 * current_rating / profile['goal_rating'])|round|int]|min }}%"></div></div>{% endif %}
-  </div>
-  {% endif %}
-  {% if last_rank %}
-  <div class="tile"><div class="label">Rang</div><div class="value small">{{ last_rank }}</div>
-    {% if profile['goal_rank'] %}<div class="sub">Objectif : {{ profile['goal_rank'] }}</div>
-    <div class="bar"><div style="width: {{ rank_progress or 0 }}%"></div></div>{% endif %}
-  </div>
-  {% endif %}
-</section>
+<div class="layout">
 
-<section class="grid2">
-  {% if rating_points|length > 1 %}
-  <div class="card">
-    <h2>Évolution du rating · {{ rating_char }}</h2>
-    <canvas id="ratingChart" height="220"></canvas>
-  </div>
-  {% endif %}
-  <div class="card">
-    <h2>Winrate glissant (20 matchs)</h2>
-    <canvas id="rollingChart" height="220"></canvas>
-  </div>
-  {% if rank_history|length > 1 %}
-  <div class="card">
-    <h2>Évolution du rang</h2>
-    <canvas id="rankChart" height="220"></canvas>
-  </div>
-  {% endif %}
-</section>
+  {# ---------- Liste des personnages ---------- #}
+  <aside class="card chars">
+    <div class="panel-title"><h2>Personnages</h2><span class="count">{{ cards|length }}</span></div>
+    <a class="char-row {{ 'active' if selected is none }}" href="{{ url_for('dashboard', perso='tous') }}">
+      <div class="char-head"><span class="char-name">Tous les persos</span></div>
+    </a>
+    {% for c in cards %}
+    <a class="char-row {{ 'active' if c.name == selected }}" href="{{ url_for('dashboard', perso=c.name) }}">
+      <div class="char-head">
+        <span class="char-name">{% if c.is_main %}<span class="star" title="Main">★</span>{% endif %}{{ c.name }}</span>
+        <span class="wr {{ wr_class(c.winrate) }}">{{ c.winrate }} %</span>
+      </div>
+      {{ wlbar(c.wins, c.total) }}
+      <div class="char-foot">
+        <span><span class="good">{{ c.wins }}V</span> / <span class="bad">{{ c.losses }}D</span> · {{ c.total }} matchs</span>
+        {% if c.rating %}<span class="rating-chip">μ {{ c.rating }}</span>{% endif %}
+      </div>
+      {% if c.rank %}<div class="char-rank">{{ c.rank }}</div>{% endif %}
+    </a>
+    {% endfor %}
+    <p class="muted small"><a href="{{ url_for('profile') }}">Choisir mes mains →</a></p>
+  </aside>
 
-<section class="grid2">
-  <div class="card">
-    <h2>Matchups difficiles <small>(5 matchs min.)</small></h2>
-    {% if worst %}
-    <table>
-      <tr><th>Adversaire</th><th>Matchs</th><th>Winrate</th></tr>
-      {% for r in worst %}
-      <tr><td><a href="{{ url_for('matchup_detail', char=r.name) }}">{{ r.name }}</a></td>
-          <td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
-      {% endfor %}
-    </table>
-    {% else %}<p class="muted">Pas encore assez de données.</p>{% endif %}
-  </div>
-  <div class="card">
-    <h2>Meilleurs matchups</h2>
-    {% if best %}
-    <table>
-      <tr><th>Adversaire</th><th>Matchs</th><th>Winrate</th></tr>
-      {% for r in best %}
-      <tr><td><a href="{{ url_for('matchup_detail', char=r.name) }}">{{ r.name }}</a></td>
-          <td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
-      {% endfor %}
-    </table>
-    {% else %}<p class="muted">Pas encore assez de données.</p>{% endif %}
-  </div>
-</section>
+  <div class="content">
+    <h1 class="section-title">{{ selected or 'Tous les persos' }}</h1>
 
-<section class="grid2">
-  <div class="card">
-    <h2>Sessions récentes</h2>
-    <table>
-      <tr><th>Jour</th><th>Matchs</th><th>Winrate</th><th>Rating</th><th>Persos</th></tr>
-      {% for s in sessions %}
-      <tr><td>{{ s.day }}</td><td>{{ s.wins }}-{{ s.losses }}</td><td>{{ wr(s.winrate) }}</td>
-          <td>{{ delta(s.rating_delta) }}</td><td class="muted">{{ s.chars|join(', ') }}</td></tr>
-      {% endfor %}
-    </table>
+    <div class="panels">
+      {# ---------- Statistiques ---------- #}
+      <section class="card">
+        <div class="panel-title"><h2>Statistiques</h2></div>
+        <div class="stat-line">
+          <div><div class="label">Global</div><div class="muted small">{{ summary.total }} matchs</div></div>
+          <div class="big {{ wr_class(summary.winrate) }}">{{ summary.winrate }} %</div>
+        </div>
+        {{ wlbar(summary.wins, summary.total) }}
+        <div class="small"><span class="good">{{ summary.wins }}V</span> / <span class="bad">{{ summary.losses }}D</span></div>
+
+        <div class="stat-line mt">
+          <div><div class="label">50 derniers matchs</div></div>
+          <div class="big {{ wr_class(last50.winrate) }}">{{ last50.winrate }} %</div>
+        </div>
+        {{ wlbar(last50.wins, last50.total) }}
+
+        <div class="mini-tiles mt">
+          <div><div class="v {{ 'good' if streak[0] == 'W' else 'bad' if streak[0] == 'L' }}">{{ streak[1] }}{{ 'V' if streak[0] == 'W' else 'D' if streak[0] == 'L' else '' }}</div><div class="label">Série en cours</div></div>
+          <div><div class="v">{{ best_streak }}V</div><div class="label">Meilleure série</div></div>
+          {% if last_rank %}<div><div class="v small-v">{{ last_rank }}</div><div class="label">Rang</div></div>{% endif %}
+        </div>
+      </section>
+
+      {# ---------- Rating ---------- #}
+      <section class="card">
+        <div class="panel-title"><h2>Rating</h2></div>
+        {% if selected and current_rating %}
+          <div class="stat-line">
+            <div class="big accent">μ {{ current_rating }}</div>
+            <div class="muted small right">Pic : {{ peak_rating }}{% if profile['goal_rating'] %}<br>Objectif : {{ profile['goal_rating'] }}{% endif %}</div>
+          </div>
+          {% if rating_progress is not none %}<div class="bar"><div style="width: {{ rating_progress }}%"></div></div>{% endif %}
+          <div class="chart-box"><canvas id="ratingChart"></canvas></div>
+        {% elif selected %}
+          <p class="muted">Pas de rating pour ce perso (matchs saisis à la main).</p>
+        {% else %}
+          <p class="muted small">Le rating est propre à chaque perso :</p>
+          {% for c in cards if c.rating %}
+            <div class="stat-line"><a href="{{ url_for('dashboard', perso=c.name) }}">{{ c.name }}</a><span class="accent mono">μ {{ c.rating }}</span></div>
+          {% endfor %}
+        {% endif %}
+      </section>
+
+      {# ---------- Activité ---------- #}
+      <section class="card">
+        <div class="panel-title"><h2>Activité récente</h2><span class="muted small">13 semaines · clique sur un jour</span></div>
+        <div class="heat-wrap">
+          <div class="heat-days"><span></span><span>Lun</span><span></span><span>Mer</span><span></span><span>Ven</span><span></span><span></span></div>
+          <div class="heat">
+            {% for col in activity.columns %}
+            <div class="heat-col">
+              <span class="heat-month">{{ MONTHS[col.month|int - 1] if col.month else '' }}</span>
+              {% for cell in col.cells %}
+                {% if cell.future %}<span class="cell future"></span>
+                {% elif cell.total %}<a class="cell {{ cell.cls }}" href="{{ url_for('match_list', jour=cell.day, perso=selected) }}"
+                   title="{{ cell.day }} : {{ cell.wins }}V-{{ cell.losses }}D ({{ cell.winrate }} %)"></a>
+                {% else %}<span class="cell h0" title="{{ cell.day }} : aucun match"></span>{% endif %}
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="legend small">
+          <span><i class="cell h1"></i>&lt;30 %</span><span><i class="cell h2"></i>30-40</span>
+          <span><i class="cell h3"></i>40-50</span><span><i class="cell h4"></i>50-60</span><span><i class="cell h5"></i>60 %+</span>
+        </div>
+        <div class="mini-tiles">
+          <div><div class="v {{ wr_class(activity.winrate) }}">{{ activity.winrate if activity.winrate is not none else '–' }} %</div><div class="label">Winrate</div></div>
+          <div><div class="v">{{ activity.total }}</div><div class="label">Matchs</div></div>
+          <div><div class="v">{{ activity.active_days }}</div><div class="label">Jours actifs</div></div>
+          <div><div class="v">{{ activity.per_day or '–' }}</div><div class="label">Par jour</div></div>
+        </div>
+      </section>
+    </div>
+
+    {# ---------- Adversaires les plus rencontrés ---------- #}
+    <section class="card">
+      <div class="panel-title"><h2>Adversaires les plus rencontrés</h2></div>
+      <div class="opp-grid">
+        {% for o in opponents %}
+        <a class="opp-row" href="{{ url_for('matchup_detail', char=o.name) }}">
+          <div class="char-head"><span class="char-name">{{ o.name }}</span><span class="wr {{ wr_class(o.winrate) }}">{{ o.winrate }} %</span></div>
+          {{ wlbar(o.wins, o.total) }}
+          <div class="char-foot"><span><span class="good">{{ o.wins }}V</span> / <span class="bad">{{ o.losses }}D</span></span><span class="muted">{{ o.total }} matchs</span></div>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+
+    {# ---------- Analyse des matchups ---------- #}
+    <section class="card">
+      <div class="panel-title">
+        <div><h2>Analyse des matchups</h2>
+          <div class="muted small">{{ selected or 'Tous les persos' }} · adversaires rencontrés au moins 3 fois{% if chart_hidden %} ({{ chart_hidden }} masqués){% endif %}</div></div>
+        <div class="toggle" role="group">
+          <button type="button" class="active" data-mode="wr">Winrate</button>
+          <button type="button" data-mode="n">Nombre de matchs</button>
+        </div>
+      </div>
+      {% if chart %}
+      {% set max_n = chart|map(attribute='total')|max %}
+      <div class="mu-scroll">
+        <div class="mu-chart" style="--n: {{ chart|length }}">
+          <div class="mu-fifty"><span>50 %</span></div>
+          {% for r in chart %}
+          <a class="mu-col" href="{{ url_for('matchup_detail', char=r.name) }}"
+             title="{{ r.name }} : {{ r.wins }}V-{{ r.losses }}D ({{ r.total }} matchs)"
+             data-wr="{{ r.winrate }}" data-n="{{ r.total }}" data-max="{{ max_n }}">
+            <span class="mu-plot">
+              <span class="mu-val">{{ r.winrate|round|int }}%</span>
+              <span class="mu-bar {{ r.cls }}" style="height: {{ r.winrate }}%"></span>
+            </span>
+            <span class="mu-name">{{ r.name }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="legend small center">
+        <span><i class="dot hi"></i>&gt; 52 %</span><span><i class="dot mid"></i>48-52 %</span><span><i class="dot lo"></i>&lt; 48 %</span>
+      </div>
+      {% else %}<p class="muted">Pas encore assez de matchs.</p>{% endif %}
+    </section>
+
+    {# ---------- Sessions ---------- #}
+    <section class="card table-wrap">
+      <div class="panel-title"><h2>Sessions récentes</h2><a class="small" href="{{ url_for('match_list', perso=selected) }}">Tous les matchs →</a></div>
+      <table>
+        <tr><th>Jour</th><th>Bilan</th><th></th><th>Winrate</th><th>Rating</th></tr>
+        {% for s in sessions %}
+        <tr>
+          <td><a href="{{ url_for('match_list', jour=s.day, perso=selected) }}">{{ s.day }}</a></td>
+          <td class="nowrap"><span class="good">{{ s.wins }}V</span> / <span class="bad">{{ s.losses }}D</span></td>
+          <td class="barcell">{{ wlbar(s.wins, s.total) }}</td>
+          <td>{{ wr(s.winrate) }}</td>
+          <td>{{ delta(s.rating_delta) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </section>
   </div>
-  {% if not mine %}
-  <div class="card">
-    <h2>Mes personnages</h2>
-    <table>
-      <tr><th>Perso</th><th>Matchs</th><th>Winrate</th></tr>
-      {% for r in by_char[:10] %}
-      <tr><td><a href="{{ url_for('dashboard', perso=r.name) }}">{{ r.name }}</a></td>
-          <td>{{ r.total }}</td><td>{{ wr(r.winrate) }}</td></tr>
-      {% endfor %}
-    </table>
-  </div>
-  {% endif %}
-</section>
+</div>
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-  const RANKS = {{ RANKS|tojson }};
+  // Graphique du rating
   const ratingPoints = {{ rating_points|tojson }};
-  const rolling = {{ rolling|tojson }};
-  const rankHistory = {{ rank_history|tojson }};
-  const grid = { color: 'rgba(255,255,255,0.07)' };
-  const base = {
-    animation: false,
-    plugins: { legend: { display: false } },
-    elements: { point: { radius: 0 }, line: { borderWidth: 2 } },
-    interaction: { mode: 'index', intersect: false },
-    scales: { x: { ticks: { maxTicksLimit: 8, color: '#9aa3b2' }, grid },
-              y: { ticks: { color: '#9aa3b2' }, grid } },
-  };
-  function chart(id, labels, data, color, extra = {}) {
-    const el = document.getElementById(id);
-    if (!el || typeof Chart === 'undefined') return;
+  const el = document.getElementById('ratingChart');
+  if (el && typeof Chart !== 'undefined' && ratingPoints.length > 1) {
+    const grid = { color: 'rgba(255,255,255,0.06)' };
     new Chart(el, {
       type: 'line',
-      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, tension: 0.2 }] },
-      options: { ...base, ...extra, scales: { ...base.scales, ...(extra.scales || {}) } },
+      data: {
+        labels: ratingPoints.map(p => p.date),
+        datasets: [{ data: ratingPoints.map(p => p.rating), borderColor: '#8b7bff',
+                     backgroundColor: 'rgba(139,123,255,0.15)', fill: true, tension: 0.25,
+                     borderWidth: 2, pointRadius: 0 }],
+      },
+      options: {
+        animation: false, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { maxTicksLimit: 5, color: '#8a93a6', callback: function (v) { return this.getLabelForValue(v).slice(5, 10); } }, grid },
+          y: { ticks: { color: '#8a93a6' }, grid },
+        },
+      },
     });
   }
-  chart('ratingChart', ratingPoints.map(p => p.date.slice(0, 10)), ratingPoints.map(p => p.rating), '#f5a524');
-  chart('rollingChart', rolling.map((_, i) => i + 1), rolling, '#4cc38a',
-        { scales: { y: { min: 0, max: 100, ticks: { color: '#9aa3b2', callback: v => v + ' %' }, grid } } });
-  chart('rankChart', rankHistory.map(p => p.date), rankHistory.map(p => p.level), '#e5484d',
-        { scales: { y: { ticks: { color: '#9aa3b2', stepSize: 1, callback: v => RANKS[v] ?? '' }, grid } } });
+
+  // Bascule winrate / nombre de matchs sur le graphique des matchups
+  document.querySelectorAll('.toggle button').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.toggle button').forEach(b => b.classList.toggle('active', b === btn));
+    const byCount = btn.dataset.mode === 'n';
+    const cols = [...document.querySelectorAll('.mu-col')];
+    const chart = document.querySelector('.mu-chart');
+    chart.classList.toggle('by-count', byCount);
+    cols.sort((a, b) => byCount ? b.dataset.n - a.dataset.n : b.dataset.wr - a.dataset.wr)
+        .forEach(col => {
+          const bar = col.querySelector('.mu-bar');
+          const val = col.querySelector('.mu-val');
+          bar.style.height = (byCount ? 100 * col.dataset.n / col.dataset.max : col.dataset.wr) + '%';
+          val.textContent = byCount ? col.dataset.n : Math.round(col.dataset.wr) + '%';
+          chart.appendChild(col);
+        });
+  }));
 </script>
 {% endblock %}

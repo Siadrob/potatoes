@@ -17,8 +17,14 @@
     <div class="actions"><button class="btn" type="submit">Importer</button></div>
   </form>
   <p class="muted">
-    Les heures sont en UTC. Ton rang en jeu (Dan) n'est pas disponible dans ces données :
-    l'évolution est suivie avec le rating de chaque personnage.
+    {% if has_ewgf_key %}
+      ✓ Clé API ewgf.gg configurée : l'import complète aussi tes rangs Dan
+      (50 derniers matchs, avec 24 h de décalage en plan gratuit).
+    {% else %}
+      Pour récupérer aussi tes rangs Dan, ajoute ta clé API ewgf.gg dans
+      <code>instance/config.py</code> : <code>EWGF_API_KEY = "ewgf_..."</code>.
+    {% endif %}
+    Les heures sont en UTC.
   </p>
 </div>
 {% endblock %}
