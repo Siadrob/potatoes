@@ -5,6 +5,8 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
 
 ## Fonctionnalités
 
+- **Connexion par ID Tekken** : chaque joueur entre son ID, le site va chercher le reste
+  tout seul et ne montre à chacun que ses données (plusieurs joueurs possibles).
 - **Accueil** : ton perso le plus joué avec son illustration, rang, rating, évolution sur
   7 et 30 jours, semaine par semaine, matchups à travailler.
 - **Import automatique** des matchs classés depuis [wank.wavu.wiki](https://wank.wavu.wiki)
@@ -12,8 +14,9 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   [ewgf.gg](https://ewgf.gg) (facultatif).
 - **Statistiques** : winrate par perso, calendrier d'activité, analyse des matchups.
 - **Entraînement** :
-  - *défi du jour* : 10 coups d'un perso qui te bat souvent, avec la vidéo du coup,
-    à classer par frames en garde, et une série de jours consécutifs ;
+  - *défi du jour* : 10 coups d'un perso qui te bat souvent, avec la vidéo du coup
+    (ou un lien vers okizeme.gg quand elle manque), à classer par frames en garde,
+    et une série de jours consécutifs ;
   - *fiches de punitions* : coups adverses à −10 ou moins et ton meilleur punish ;
   - *marges de progression* : matchups qui te coûtent le plus de victoires ;
   - *plan d'entraînement* : tes objectifs à faire, en cours, acquis.
@@ -54,18 +57,19 @@ Installer Python s'il manque :
 
 ## Installation manuelle (facultative)
 
-`run.py` fait exactement ceci, si tu préfères contrôler chaque étape :
+Si tu préfères contrôler chaque étape, voici l'équivalent de ce que fait `run.py` :
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows : .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-flask --app app run                # ou : waitress-serve --call app:create_app
+waitress-serve --host=127.0.0.1 --port=5000 --call app:create_app
 ```
 
-Sous Windows, si PowerShell refuse d'activer l'environnement, lance une fois
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. Avec `flask --app app run --debug`,
-le code est rechargé à chaque modification (utile pour développer).
+Puis ouvre http://127.0.0.1:5000. Sous Windows, si PowerShell refuse d'activer
+l'environnement, lance une fois `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+Pour développer, `flask --app app run --debug` recharge le code à chaque modification.
 
 ## Configuration (facultative)
 
@@ -99,8 +103,9 @@ ton profil en jeu) ou l'URL de ta page ewgf.gg. Ensuite il va chercher tout seul
 - tes mains : tes deux persos les plus joués, modifiables dans le profil.
 
 L'ID est gardé un an dans un cookie : les visites suivantes ouvrent directement ta page.
-Tes matchs sont réimportés automatiquement quand la dernière mise à jour date de plus de
-6 heures (ou à la demande : menu du joueur, « ↻ Actualiser mes matchs »). L'historique
+Tes matchs sont réimportés automatiquement quand tu ouvres l'accueil et que la dernière
+mise à jour date de plus de 6 heures (ou à la demande : menu du joueur,
+« ↻ Actualiser mes matchs »). L'historique
 s'accumule au fil du temps, au-delà des 500 derniers matchs.
 
 **Plusieurs joueurs** peuvent utiliser le même site : chacun entre son ID et ne voit que
@@ -139,6 +144,7 @@ Pour changer de machine : installe le projet comme ci-dessus, puis copie ce doss
 ## Tests
 
 ```bash
+source .venv/bin/activate          # Windows : .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 pytest
 ```
@@ -155,7 +161,9 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 | L'installation a été interrompue ou semble cassée | Supprime le dossier `.venv` et relance `python3 run.py` |
 | Le navigateur ne s'ouvre pas | Ouvre à la main l'adresse affichée par `run.py` (ex. http://127.0.0.1:5000) |
 | `Address already in use` / port 5000 occupé | `run.py` prend automatiquement le port libre suivant. En installation manuelle : `--port 5001`. |
-| L'import wavu échoue (403 ou réseau) | Vérifie ta connexion et l'ID joueur, puis réessaie plus tard. |
+| Connexion : « Cet ID est introuvable » ou « Aucun match classé » | Vérifie l'ID (12 caractères, tirets facultatifs) en cherchant ton pseudo sur ewgf.gg. Seuls les joueurs ayant des matchs classés sont reconnus. |
+| Connexion : « wank.wavu.wiki est injoignable » | Vérifie ta connexion internet et réessaie. Un joueur déjà connu peut se connecter même hors ligne. |
+| L'import wavu échoue (403 ou réseau) | Vérifie ta connexion, puis réessaie plus tard (menu du joueur, « ↻ Actualiser mes matchs »). |
 | « ewgf : erreur invalid_api_key » | La clé dans `instance/config.py` est fausse ou révoquée : régénère-la sur ewgf.gg. |
 | « ewgf : erreur rate_limit_exceeded » | Quota gratuit (100 requêtes par heure) atteint : réessaie l'heure suivante. |
 | Graphiques ou polices absents | Ils sont chargés depuis internet (jsDelivr, Google Fonts) : vérifie la connexion. |
@@ -181,6 +189,7 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 ## Données et crédits
 
 Projet non affilié à Bandai Namco. Matchs : [Wavu Wank](https://wank.wavu.wiki) et
-[ewgf.gg](https://ewgf.gg). Frame data et vidéos des coups : [Wavu Wiki](https://wavu.wiki).
+[ewgf.gg](https://ewgf.gg). Frame data et vidéos des coups : [Wavu Wiki](https://wavu.wiki) ;
+les coups sans vidéo renvoient vers [okizeme.gg](https://okizeme.gg).
 Illustrations : site officiel Bandai Namco, téléchargées pour un usage local uniquement
 et jamais commitées. Les punisseurs sont calculés automatiquement : vérifie-les en training mode.
