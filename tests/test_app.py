@@ -480,3 +480,10 @@ def test_matches_pages_can_be_disabled(tmp_path):
         assert "/matchs" not in page and "/matchups" not in page, url
     stats_page = client.get("/stats").get_data(as_text=True)
     assert "/entrainement/punitions?adversaire=King" in stats_page    # les persos mènent aux fiches
+
+
+def test_plan_not_in_menu_but_reachable(client):
+    nav = client.get("/entrainement").get_data(as_text=True).split("<nav>")[1].split("</nav>")[0]
+    assert "Mon plan" not in nav and "Tournois" in nav
+    assert client.get("/plan").status_code == 200
+    assert 'href="/plan"' in client.get("/entrainement").get_data(as_text=True)
