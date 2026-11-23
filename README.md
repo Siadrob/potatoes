@@ -164,6 +164,16 @@ git pull
 python3 run.py
 ```
 
+**Vérifier que tout est à jour** (paquets Python et bibliothèques JavaScript des pages) :
+
+```bash
+.venv/bin/python tools/check_updates.py
+```
+
+L'outil liste ce qui a une version plus récente, publiée depuis au moins 14 jours (les
+toutes dernières reçoivent souvent un correctif dans la foulée). Après une mise à jour,
+relance les tests (`pytest`) et, si possible, `tools/verify_live.py`.
+
 **Changer de version de Python** (par exemple pour passer à la dernière) : renomme ou
 supprime le dossier `.venv`, puis relance avec la nouvelle version (`uv run --no-project
 run.py`, ou `python3.15 run.py`). L'environnement est recréé ; tes données (`instance/`)
