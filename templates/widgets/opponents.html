@@ -1,0 +1,10 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+<div class="opp-grid">
+  {% for o in opponents %}
+  <a class="opp-row" href="{{ opp_link(o.name, perso=char) }}">
+    <div class="char-head"><span class="char-name">{{ o.name }}</span><span class="wr {{ wr_class(o.winrate) }}">{{ o.winrate }} %</span></div>
+    {{ wlbar(o.wins, o.total) }}
+    <div class="char-foot"><span><span class="good">{{ o.wins }}V</span> / <span class="bad">{{ o.losses }}D</span></span><span class="muted">{{ o.total }} matchs</span></div>
+  </a>
+  {% endfor %}
+</div>

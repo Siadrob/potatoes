@@ -1,0 +1,8 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% for k in knowledge %}
+  <div class="know-row">
+    <span>{{ k.opp_char }}</span>
+    <div class="bar"><div style="width: {{ k.quiz_rate }}%"></div></div>
+    <span class="nowrap {{ 'good' if k.quiz_rate >= 70 else 'mid' if k.quiz_rate >= 50 else 'bad' }}">{{ k.quiz_rate|int }} %</span>
+  </div>
+{% else %}<p class="muted small">Fais un défi ou un quiz pour mesurer ta connaissance des persos.</p>{% endfor %}

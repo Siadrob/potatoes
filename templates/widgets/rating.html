@@ -1,0 +1,8 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if rating %}
+  <div class="prog-rows">
+    <div><span>7 derniers jours</span><strong>{{ delta(delta7) }}</strong></div>
+    <div><span>30 derniers jours</span><strong>{{ delta(delta30) }}</strong></div>
+    <div><span>Record</span><strong>μ {{ peak }}{% if peak > rating %} <span class="muted small">({{ rating - peak }})</span>{% endif %}</strong></div>
+  </div>
+{% else %}<p class="muted small">Pas de rating pour ce perso.</p>{% endif %}

@@ -1,0 +1,15 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+<div class="table-wrap">
+<table>
+  <tr><th>Semaine du</th><th>Matchs</th><th>Winrate</th><th></th><th>Rating</th></tr>
+  {% for w in weeks %}
+  <tr>
+    <td class="nowrap">{{ w.start[8:10] }}/{{ w.start[5:7] }}</td>
+    <td>{{ w.total }}</td>
+    <td class="{{ wr_class(w.winrate) }}">{{ w.winrate }} %</td>
+    <td class="barcell">{{ wlbar(w.wins, w.total) }}</td>
+    <td class="nowrap">{% if w.rating_end %}{{ w.rating_end }} {{ delta(w.rating_delta) }}{% else %}–{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>

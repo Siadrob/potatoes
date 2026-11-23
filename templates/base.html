@@ -38,9 +38,22 @@
 
   <main>
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <div class="flash {{ category }}">{{ message }}</div>
-      {% endfor %}
+      {% if messages %}
+      <div class="toasts" role="status" aria-live="polite">
+        {% for category, message in messages %}
+          <div class="flash toast {{ category }}">
+            <span>{{ message }}</span>
+            <button type="button" class="toast-close" aria-label="Fermer" onclick="this.parentElement.remove()">✕</button>
+          </div>
+        {% endfor %}
+      </div>
+      <script>
+        // Les messages d'information disparaissent seuls ; les erreurs restent jusqu'à fermeture.
+        setTimeout(() => document.querySelectorAll('.toast:not(.error)').forEach(t => {
+          t.classList.add('leaving'); setTimeout(() => t.remove(), 400);
+        }), 5000);
+      </script>
+      {% endif %}
     {% endwith %}
     {% block content %}{% endblock %}
   </main>

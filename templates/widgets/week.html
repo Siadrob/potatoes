@@ -1,0 +1,15 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if week.total %}
+  <div class="kpi {{ wr_class(week.winrate) }}">{{ week.winrate }} %</div>
+  {{ wlbar(week.wins, week.total) }}
+  <div class="small mt-s">{{ week.wins }}V / {{ week.losses }}D en {{ week.total }} matchs</div>
+{% else %}
+  <div class="kpi muted">—</div><div class="small muted">Pas de match ces 7 derniers jours.</div>
+{% endif %}
+{% if prev_week.total %}
+  <div class="small muted mt-s">
+    Semaine précédente : {{ prev_week.winrate }} %
+    {% if week.total %}{% set diff = week.winrate - prev_week.winrate %}
+      <span class="{{ 'good' if diff >= 0 else 'bad' }}">({{ '%+.1f' % diff }} pts)</span>{% endif %}
+  </div>
+{% endif %}

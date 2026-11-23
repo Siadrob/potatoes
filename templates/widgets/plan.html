@@ -1,0 +1,6 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% for g in goals %}
+  <div class="goal-row"><span class="tag tag-{{ g['category'] }}">{{ GOAL_CATEGORIES[g['category']] }}</span>
+    <span>{{ g['title'] }}</span><span class="muted small">{{ GOAL_STATUSES[g['status']] }}</span></div>
+{% else %}<p class="muted small">Pas d'objectif en cours.</p>{% endfor %}
+<a class="small" href="{{ url_for('plan') }}">Ouvrir mon plan →</a>

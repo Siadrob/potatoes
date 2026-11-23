@@ -1,0 +1,8 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+<div class="kpi">🔥 {{ streak }}</div>
+<div class="small muted">jour{{ 's' if streak > 1 }} d'affilée · {{ goals_open }} objectif{{ 's' if goals_open > 1 }} dans <a href="{{ url_for('plan') }}">mon plan</a></div>
+{% if daily_done %}
+  <a class="small" href="{{ url_for('training_hub', perso=char) }}">Défi fait ✓ · entraînement →</a>
+{% else %}
+  <form method="post" action="{{ url_for('daily_challenge', perso=char) }}"><button class="btn mt-s" type="submit">Faire le défi</button></form>
+{% endif %}

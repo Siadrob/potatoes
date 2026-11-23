@@ -61,6 +61,8 @@ def _migrate_players(conn):
     for table in ("matches", "quiz_sessions", "training_goals"):
         if "player_id" not in _columns(conn, table):
             conn.execute(f"ALTER TABLE {table} ADD COLUMN player_id TEXT")
+    if "layout" not in _columns(conn, "players"):
+        conn.execute("ALTER TABLE players ADD COLUMN layout TEXT")
 
     if "player_id" not in _columns(conn, "matchup_notes"):
         conn.executescript("""

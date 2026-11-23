@@ -1,0 +1,14 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% for c in cards %}
+<a class="char-row {{ 'active' if c.name == char }}" href="{{ url_for('home', perso=c.name) }}">
+  <div class="char-head">
+    <span class="char-name">{% if c.is_main %}<span class="star" title="Main">★</span>{% endif %}{{ c.name }}</span>
+    <span class="wr {{ wr_class(c.winrate) }}">{{ c.winrate }} %</span>
+  </div>
+  {{ wlbar(c.wins, c.total) }}
+  <div class="char-foot">
+    <span><span class="good">{{ c.wins }}V</span> / <span class="bad">{{ c.losses }}D</span> · {{ c.total }} matchs</span>
+    {% if c.rating %}<span class="rating-chip">μ {{ c.rating }}</span>{% endif %}
+  </div>
+</a>
+{% endfor %}

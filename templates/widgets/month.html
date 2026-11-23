@@ -1,0 +1,6 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if month.total %}
+  <div class="kpi {{ wr_class(month.winrate) }}">{{ month.winrate }} %</div>
+  {{ wlbar(month.wins, month.total) }}
+  <div class="small mt-s">{{ month.wins }}V / {{ month.losses }}D en {{ month.total }} matchs</div>
+{% else %}<div class="kpi muted">—</div><div class="small muted">Pas de match ces 30 derniers jours.</div>{% endif %}

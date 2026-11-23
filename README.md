@@ -7,8 +7,10 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
 
 - **Connexion par ID Tekken** : chaque joueur entre son ID, le site va chercher le reste
   tout seul et ne montre à chacun que ses données (plusieurs joueurs possibles).
-- **Accueil** : ton perso le plus joué avec son illustration, rang, rating, évolution sur
-  7 et 30 jours, semaine par semaine, matchups à travailler.
+- **Accueil personnalisable** : ton perso le plus joué avec son illustration, rang et rating,
+  puis des **widgets** au choix (progression, semaine, défi du jour, courbe, matchups,
+  calendrier, marges de progression, plan…). Bouton « Personnaliser » : glisser-déposer,
+  taille petite / moyenne / large, masquer, ajouter ; disposition enregistrée par joueur.
 - **Import automatique** des matchs classés depuis [wank.wavu.wiki](https://wank.wavu.wiki)
   (500 derniers matchs à chaque import, sans doublons) et des rangs Dan via l'API
   [ewgf.gg](https://ewgf.gg) (facultatif).
@@ -181,6 +183,7 @@ Les tests n'utilisent pas internet : les accès réseau sont simulés.
 | `wavu.py`, `ewgf.py` | Import des matchs (wank.wavu.wiki) et des rangs Dan (API ewgf.gg) |
 | `framedata.py` | Frame data du wiki Wavu en DataFrames pandas, cache, punitions |
 | `training.py` | Quiz, défi du jour, marges de progression |
+| `widgets.py`, `templates/widgets/` | Catalogue des widgets de l'accueil et leur contenu |
 | `portraits.py` | Illustrations des persos |
 | `data.py` | Roster et rangs, à compléter à chaque nouveau DLC |
 | `config.example.py` | Modèle de configuration locale |

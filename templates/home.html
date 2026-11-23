@@ -78,170 +78,130 @@
   </details>
 </section>
 
-{# ---------- L'essentiel de la progression ---------- #}
-<section class="prog-grid">
-  <div class="card prog">
-    <div class="label">Rating</div>
-    {% if rating %}
-      <div class="prog-rows">
-        <div><span>7 derniers jours</span><strong>{{ delta(delta7) }}</strong></div>
-        <div><span>30 derniers jours</span><strong>{{ delta(delta30) }}</strong></div>
-        <div><span>Record</span><strong>μ {{ peak }}{% if peak > rating %} <span class="muted small">({{ rating - peak }})</span>{% endif %}</strong></div>
-      </div>
-    {% else %}<p class="muted small">Pas de rating pour ce perso.</p>{% endif %}
-  </div>
+{# ---------- Widgets ---------- #}
+<div class="widget-bar">
+  <a class="small" href="{{ url_for('dashboard', perso=char) }}">Statistiques détaillées de {{ char }} →</a>
+  <button type="button" class="btn-mini" id="editToggle" aria-expanded="false">⚙ Personnaliser</button>
+</div>
 
-  <div class="card prog">
-    <div class="label">Cette semaine</div>
-    {% if week.total %}
-      <div class="kpi {{ wr_class(week.winrate) }}">{{ week.winrate }} %</div>
-      {{ wlbar(week.wins, week.total) }}
-      <div class="small mt-s">{{ week.wins }}V / {{ week.losses }}D en {{ week.total }} matchs</div>
-    {% else %}
-      <div class="kpi muted">—</div><div class="small muted">Pas de match ces 7 derniers jours.</div>
-    {% endif %}
-    {% if prev_week.total %}
-      <div class="small muted mt-s">
-        Semaine précédente : {{ prev_week.winrate }} %
-        {% if week.total %}
-          {% set diff = week.winrate - prev_week.winrate %}
-          <span class="{{ 'good' if diff >= 0 else 'bad' }}">({{ '%+.1f' % diff }} pts)</span>
-        {% endif %}
-      </div>
-    {% endif %}
-  </div>
-
-  <div class="card prog">
-    <div class="label">30 derniers jours</div>
-    {% if month.total %}
-      <div class="kpi {{ wr_class(month.winrate) }}">{{ month.winrate }} %</div>
-      {{ wlbar(month.wins, month.total) }}
-      <div class="small mt-s">{{ month.wins }}V / {{ month.losses }}D en {{ month.total }} matchs</div>
-    {% else %}<div class="kpi muted">—</div>{% endif %}
-  </div>
-
-  <div class="card prog daily-mini">
-    <div class="label">Défi du jour</div>
-    <div class="kpi">🔥 {{ streak }}</div>
-    <div class="small muted">jour{{ 's' if streak > 1 }} d'affilée · {{ goals_open }} objectif{{ 's' if goals_open > 1 }} dans <a href="{{ url_for('plan') }}">mon plan</a></div>
-    {% if daily_done %}
-      <a class="small" href="{{ url_for('training_hub', perso=char) }}">Défi fait ✓ · entraînement →</a>
-    {% else %}
-      <form method="post" action="{{ url_for('daily_challenge', perso=char) }}"><button class="btn mt-s" type="submit">Faire le défi</button></form>
-    {% endif %}
-  </div>
-
-  <div class="card prog">
-    <div class="label">Rang et rating visés</div>
-    {% if goal_rating or profile['goal_rank'] %}
-      {% if goal_rating and rating %}
-        <div class="goal">
-          <div class="goal-head"><span>Rating μ {{ goal_rating }}</span>
-            <span class="small {{ 'good' if rating >= goal_rating }}">{{ 'Atteint !' if rating >= goal_rating else ('encore %d' % (goal_rating - rating)) }}</span></div>
-          <div class="bar"><div style="width: {{ goal_progress }}%"></div></div>
-        </div>
-      {% endif %}
-      {% if profile['goal_rank'] %}
-        <div class="goal">
-          <div class="goal-head"><span>{{ profile['goal_rank'] }}</span><span class="small muted">{{ rank or 'rang inconnu' }}</span></div>
-          <div class="bar"><div style="width: {{ rank_progress or 0 }}%"></div></div>
-        </div>
-      {% endif %}
-    {% else %}
-      <p class="small muted">Aucun rang ni rating visé pour l'instant.</p>
-    {% endif %}
-    <a class="small" href="{{ url_for('profile') }}">{{ 'Modifier' if goal_rating or profile['goal_rank'] else 'Fixer un objectif' }} →</a>
-  </div>
-</section>
-
-{# ---------- Courbe ---------- #}
-{% if daily|length > 1 %}
-<section class="card">
-  <div class="panel-title"><h2>Évolution du rating</h2><span class="muted small">rating en fin de journée</span></div>
-  <div class="chart-big"><canvas id="progressChart"></canvas></div>
-</section>
-{% endif %}
-
-<section class="grid2">
-  {# ---------- Semaine par semaine ---------- #}
-  <div class="card table-wrap">
-    <div class="panel-title"><h2>Semaine par semaine</h2></div>
-    <table>
-      <tr><th>Semaine du</th><th>Matchs</th><th>Winrate</th><th></th><th>Rating</th></tr>
-      {% for w in weeks %}
-      <tr>
-        <td class="nowrap">{{ w.start[8:10] }}/{{ w.start[5:7] }}</td>
-        <td>{{ w.total }}</td>
-        <td class="{{ wr_class(w.winrate) }}">{{ w.winrate }} %</td>
-        <td class="barcell">{{ wlbar(w.wins, w.total) }}</td>
-        <td class="nowrap">{% if w.rating_end %}{{ w.rating_end }} {{ delta(w.rating_delta) }}{% else %}–{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
-
-  {# ---------- Matchups du moment ---------- #}
-  <div class="card">
-    <div class="panel-title"><h2>Matchups du mois</h2><span class="muted small">4 matchs min.</span></div>
-    <div class="focus">
-      <div>
-        <div class="label bad">À travailler</div>
-        {% for r in to_work %}
-        <div class="focus-item">
-          <a class="focus-row" href="{{ opp_link(r.name, perso=char) }}">
-            <span>{{ r.name }}</span><span class="muted small">{{ r.wins }}V-{{ r.losses }}D</span><strong class="{{ wr_class(r.winrate) }}">{{ r.winrate|round|int }} %</strong>
-          </a>
-          <a class="icon-btn" href="{{ url_for('punish_page', adversaire=r.name, perso=char) }}"
-             title="Réviser {{ r.name }} : punitions et quiz" aria-label="Réviser {{ r.name }}">🎯</a>
-        </div>
-        {% else %}<p class="muted small">Pas assez de matchs.</p>{% endfor %}
-      </div>
-      <div>
-        <div class="label good">Points forts</div>
-        {% for r in strengths %}
-        <a class="focus-row" href="{{ opp_link(r.name, perso=char) }}">
-          <span>{{ r.name }}</span><span class="muted small">{{ r.wins }}V-{{ r.losses }}D</span><strong class="{{ wr_class(r.winrate) }}">{{ r.winrate|round|int }} %</strong>
-        </a>
-        {% else %}<p class="muted small">Pas assez de matchs.</p>{% endfor %}
-      </div>
+<section class="card edit-panel" id="editPanel" hidden>
+  <div class="panel-title">
+    <h2>Personnaliser l'accueil</h2>
+    <div class="actions">
+      <form method="post" action="{{ url_for('reset_widgets', perso=char) }}">
+        <button class="btn-mini" type="submit">Disposition par défaut</button>
+      </form>
+      <button type="button" class="btn" id="editDone">Terminé</button>
     </div>
-    <p class="small muted">Clique sur un perso pour le réviser (punitions + quiz) ·
-      <a href="{{ url_for('training_hub', perso=char) }}">toutes mes marges de progression →</a></p>
   </div>
+  <p class="small muted">Glisse un widget par la poignée <strong>⠿</strong> (ou ◀ ▶) pour le déplacer, choisis sa taille
+    (<strong>S</strong> petit, <strong>M</strong> moyen, <strong>L</strong> large) ou masque-le avec <strong>✕</strong>.
+    Tout est enregistré automatiquement.</p>
+  {% if hidden_widgets %}
+  <div class="label">Ajouter un widget</div>
+  <div class="catalog">
+    {% for wid, meta in hidden_widgets %}
+    <button type="button" class="catalog-item" data-id="{{ wid }}" data-size="{{ meta.default_size }}">
+      <strong>+ {{ meta.title }}</strong><span class="small muted">{{ meta.description }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  {% else %}<p class="small muted">Tous les widgets sont affichés.</p>{% endif %}
 </section>
-
-<p class="center-link"><a href="{{ url_for('dashboard', perso=char) }}">Voir les statistiques détaillées de {{ char }} →</a></p>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<div class="widgets" id="widgets">
+  {% for w in layout %}
+  {% set meta = catalog[w.id] %}
+  <section class="card widget w-{{ w.size }}" data-id="{{ w.id }}" data-size="{{ w.size }}">
+    <header class="w-head">
+      <span class="w-grip" title="Glisser pour déplacer" aria-hidden="true">⠿</span>
+      <h2>{{ meta.title }}</h2>
+      <div class="w-tools">
+        <button type="button" class="w-move" data-dir="-1" title="Avancer d'un cran">◀</button>
+        <button type="button" class="w-move" data-dir="1" title="Reculer d'un cran">▶</button>
+        {% for s in meta.sizes %}
+        <button type="button" class="w-size {{ 'active' if s == w.size }}" data-size="{{ s }}"
+                title="{{ {'s': 'Petit', 'm': 'Moyen', 'l': 'Large'}[s] }}">{{ s|upper }}</button>
+        {% endfor %}
+        <button type="button" class="w-hide" title="Masquer ce widget">✕</button>
+      </div>
+    </header>
+    <div class="w-body">{% include "widgets/" ~ w.id ~ ".html" %}</div>
+  </section>
+  {% else %}
+  <div class="card empty w-l">
+    <p>Aucun widget affiché.</p>
+    <p><button type="button" class="btn" onclick="document.getElementById('editToggle').click()">Ajouter des widgets</button></p>
+  </div>
+  {% endfor %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
-  const daily = {{ daily|tojson }};
-  const goal = {{ goal_rating|tojson }};
-  const canvas = document.getElementById('progressChart');
-  if (canvas && typeof Chart !== 'undefined') {
-    const grid = { color: 'rgba(255,255,255,0.06)' };
-    const datasets = [{
-      label: 'Rating', data: daily.map(p => p.rating), borderColor: '#8b7bff',
-      backgroundColor: 'rgba(139,123,255,0.15)', fill: true, tension: 0.3, borderWidth: 2.5,
-      pointRadius: 3, pointBackgroundColor: '#8b7bff',
-    }];
-    if (goal) datasets.push({
-      label: 'Objectif', data: daily.map(() => goal), borderColor: 'rgba(242,193,46,0.8)',
-      borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, fill: false,
+  (() => {
+    const grid = document.getElementById('widgets');
+    const panel = document.getElementById('editPanel');
+    const toggle = document.getElementById('editToggle');
+    const saveUrl = {{ url_for('save_widgets')|tojson }};
+    let sortable = null;
+
+    const layout = () => [...grid.querySelectorAll('.widget')]
+      .map(el => ({ id: el.dataset.id, size: el.dataset.size }));
+
+    async function save(extra = [], reload = false) {
+      await fetch(saveUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layout: layout().concat(extra) }),
+      });
+      if (reload) { location.hash = 'personnaliser'; location.reload(); }
+    }
+
+    function setEditing(on) {
+      document.body.classList.toggle('editing', on);
+      panel.hidden = !on;
+      toggle.setAttribute('aria-expanded', on);
+      toggle.textContent = on ? '✓ Terminé' : '⚙ Personnaliser';
+      if (typeof Sortable !== 'undefined') {
+        sortable = sortable || Sortable.create(grid, {
+          handle: '.w-grip', animation: 150, ghostClass: 'w-ghost', onEnd: () => save(),
+          forceFallback: true, fallbackTolerance: 4,   // glisser au pointeur : souris et tactile
+        });
+        sortable.option('disabled', !on);
+      }
+      if (!on && location.hash === '#personnaliser') history.replaceState(null, '', location.pathname + location.search);
+    }
+
+    toggle.addEventListener('click', () => setEditing(!document.body.classList.contains('editing')));
+    document.getElementById('editDone').addEventListener('click', () => setEditing(false));
+
+    grid.querySelectorAll('.widget').forEach(el => {
+      el.querySelectorAll('.w-size').forEach(btn => btn.addEventListener('click', () => {
+        el.classList.remove('w-s', 'w-m', 'w-l');
+        el.classList.add('w-' + btn.dataset.size);
+        el.dataset.size = btn.dataset.size;
+        el.querySelectorAll('.w-size').forEach(b => b.classList.toggle('active', b === btn));
+        window.dispatchEvent(new Event('resize'));   // les graphiques s'adaptent
+        save();
+      }));
+      el.querySelector('.w-hide').addEventListener('click', () => { el.remove(); save([], true); });
+      el.querySelectorAll('.w-move').forEach(btn => btn.addEventListener('click', () => {
+        const target = btn.dataset.dir === '-1' ? el.previousElementSibling : el.nextElementSibling;
+        if (!target) return;
+        if (btn.dataset.dir === '-1') grid.insertBefore(el, target); else grid.insertBefore(target, el);
+        btn.focus();
+        save();
+      }));
     });
-    new Chart(canvas, {
-      type: 'line',
-      data: { labels: daily.map(p => p.date.slice(8, 10) + '/' + p.date.slice(5, 7)), datasets },
-      options: {
-        animation: false, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-          x: { ticks: { maxTicksLimit: 10, color: '#8a93a6' }, grid },
-          y: { ticks: { color: '#8a93a6' }, grid },
-        },
-      },
-    });
-  }
+
+    panel.querySelectorAll('.catalog-item').forEach(btn => btn.addEventListener('click', () => {
+      btn.disabled = true;
+      save([{ id: btn.dataset.id, size: btn.dataset.size }], true);
+    }));
+
+    if (location.hash === '#personnaliser') setEditing(true);
+  })();
 </script>
 {% endif %}
 {% endblock %}

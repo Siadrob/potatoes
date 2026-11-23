@@ -1,0 +1,27 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% set MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'] %}
+<div class="heat-wrap">
+  <div class="heat-days"><span></span><span>Lun</span><span></span><span>Mer</span><span></span><span>Ven</span><span></span><span></span></div>
+  <div class="heat">
+    {% for col in activity.columns %}
+    <div class="heat-col">
+      <span class="heat-month">{{ MONTHS[col.month|int - 1] if col.month else '' }}</span>
+      {% for cell in col.cells %}
+        {% if cell.future %}<span class="cell future"></span>
+        {% elif cell.total %}<span class="cell {{ cell.cls }}" title="{{ cell.day }} : {{ cell.wins }}V-{{ cell.losses }}D ({{ cell.winrate }} %)"></span>
+        {% else %}<span class="cell h0" title="{{ cell.day }} : aucun match"></span>{% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<div class="legend small">
+  <span><i class="cell h1"></i>&lt;30 %</span><span><i class="cell h2"></i>30-40</span>
+  <span><i class="cell h3"></i>40-50</span><span><i class="cell h4"></i>50-60</span><span><i class="cell h5"></i>60 %+</span>
+</div>
+<div class="mini-tiles">
+  <div><div class="v {{ wr_class(activity.winrate) }}">{{ activity.winrate if activity.winrate is not none else '–' }} %</div><div class="label">Winrate</div></div>
+  <div><div class="v">{{ activity.total }}</div><div class="label">Matchs</div></div>
+  <div><div class="v">{{ activity.active_days }}</div><div class="label">Jours actifs</div></div>
+  <div><div class="v">{{ activity.per_day or '–' }}</div><div class="label">Par jour</div></div>
+</div>

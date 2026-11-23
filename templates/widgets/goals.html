@@ -1,0 +1,19 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if goal_rating or profile['goal_rank'] %}
+  {% if goal_rating and rating %}
+    <div class="goal">
+      <div class="goal-head"><span>Rating μ {{ goal_rating }}</span>
+        <span class="small {{ 'good' if rating >= goal_rating }}">{{ 'Atteint !' if rating >= goal_rating else ('encore %d' % (goal_rating - rating)) }}</span></div>
+      <div class="bar"><div style="width: {{ goal_progress }}%"></div></div>
+    </div>
+  {% endif %}
+  {% if profile['goal_rank'] %}
+    <div class="goal">
+      <div class="goal-head"><span>{{ profile['goal_rank'] }}</span><span class="small muted">{{ rank or 'rang inconnu' }}</span></div>
+      <div class="bar"><div style="width: {{ rank_progress or 0 }}%"></div></div>
+    </div>
+  {% endif %}
+{% else %}
+  <p class="small muted">Aucun rang ni rating visé pour l'instant.</p>
+{% endif %}
+<a class="small" href="{{ url_for('profile') }}">{{ 'Modifier' if goal_rating or profile['goal_rank'] else 'Fixer un objectif' }} →</a>

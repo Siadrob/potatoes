@@ -1,0 +1,21 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if margins %}
+<div class="table-wrap">
+<table>
+  <tr><th>Adversaire</th><th>Bilan</th><th>Winrate</th><th title="Victoires qu'il t'aurait fallu pour être à 50 %">À récupérer</th><th>Quiz</th><th></th></tr>
+  {% for m in margins %}
+  <tr>
+    <td><a href="{{ opp_link(m.opp_char, perso=char) }}"><strong>{{ m.opp_char }}</strong></a></td>
+    <td class="nowrap"><span class="good">{{ m.wins }}V</span> / <span class="bad">{{ m.games - m.wins }}D</span></td>
+    <td class="bad">{{ m.winrate }} %</td>
+    <td><span class="gain">{{ m.missing_wins }}</span></td>
+    <td class="nowrap">{% if m.quiz_total %}<span class="{{ 'good' if m.quiz_rate >= 70 else 'mid' if m.quiz_rate >= 50 else 'bad' }}">{{ m.quiz_rate|int }} %</span>{% else %}<span class="muted small">jamais testé</span>{% endif %}</td>
+    <td class="actions-cell">
+      <a class="icon-btn" href="{{ url_for('punish_page', adversaire=m.opp_char, perso=char) }}" title="Fiche de punitions {{ m.opp_char }}">🎯</a>
+      <form method="post" action="{{ url_for('free_quiz', perso=char) }}"><input type="hidden" name="adversaire" value="{{ m.opp_char }}"><button class="icon-btn" type="submit" title="Quiz sur {{ m.opp_char }}">❓</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}<p class="muted small">Aucun matchup sous 50 % avec assez de matchs sur 60 jours.</p>{% endif %}

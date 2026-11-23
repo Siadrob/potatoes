@@ -1,0 +1,49 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if chart %}
+{% set max_n = chart|map(attribute='total')|max %}
+<div class="mu-widget">
+  <div class="mu-tools">
+    <span class="muted small">Adversaires rencontrés au moins 3 fois{% if chart_hidden %} ({{ chart_hidden }} masqués){% endif %}</span>
+    <div class="toggle" role="group">
+      <button type="button" class="active" data-mode="wr">Winrate</button>
+      <button type="button" data-mode="n">Nombre de matchs</button>
+    </div>
+  </div>
+  <div class="mu-scroll">
+    <div class="mu-chart" style="--n: {{ chart|length }}">
+      <div class="mu-fifty"><span>50 %</span></div>
+      {% for r in chart %}
+      <a class="mu-col" href="{{ opp_link(r.name, perso=char) }}"
+         title="{{ r.name }} : {{ r.wins }}V-{{ r.losses }}D ({{ r.total }} matchs)"
+         data-wr="{{ r.winrate }}" data-n="{{ r.total }}" data-max="{{ max_n }}">
+        <span class="mu-plot">
+          <span class="mu-val">{{ r.winrate|round|int }}%</span>
+          <span class="mu-bar {{ r.cls }}" style="height: {{ r.winrate }}%"></span>
+        </span>
+        <span class="mu-name">{{ r.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="legend small center">
+    <span><i class="dot hi"></i>&gt; 52 %</span><span><i class="dot mid"></i>48-52 %</span><span><i class="dot lo"></i>&lt; 48 %</span>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.mu-widget').forEach(box => {
+    const chart = box.querySelector('.mu-chart');
+    box.querySelectorAll('.toggle button').forEach(btn => btn.addEventListener('click', () => {
+      box.querySelectorAll('.toggle button').forEach(b => b.classList.toggle('active', b === btn));
+      const byCount = btn.dataset.mode === 'n';
+      chart.classList.toggle('by-count', byCount);
+      [...chart.querySelectorAll('.mu-col')]
+        .sort((a, b) => byCount ? b.dataset.n - a.dataset.n : b.dataset.wr - a.dataset.wr)
+        .forEach(col => {
+          col.querySelector('.mu-bar').style.height = (byCount ? 100 * col.dataset.n / col.dataset.max : col.dataset.wr) + '%';
+          col.querySelector('.mu-val').textContent = byCount ? col.dataset.n : Math.round(col.dataset.wr) + '%';
+          chart.appendChild(col);
+        });
+    }));
+  });
+</script>
+{% else %}<p class="muted small">Pas encore assez de matchs.</p>{% endif %}

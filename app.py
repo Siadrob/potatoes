@@ -17,6 +17,7 @@ import portraits
 import stats
 import training
 import wavu
+import widgets
 from data import CHARACTERS, RANKS, rank_level
 from db import adopt_orphans, close_db, get_db, init_db, save_imported
 
@@ -246,8 +247,39 @@ def create_app(test_config=None):
         mains = get_mains(everything)
         switch = [r for r in played if r["name"] in mains or r["name"] == char]
 
+        # Widgets : on ne calcule que ce dont les widgets affichés ont besoin.
+        layout = player_layout()
+        shown = {w["id"] for w in layout}
+        extra = {}
+        if "activity" in shown:
+            last_day = date.fromisoformat(ms[-1]["played_at"][:10])
+            extra["activity"] = stats.activity(ms, max(today, last_day))
+        if "matchup_chart" in shown:
+            extra["chart"], extra["chart_hidden"] = stats.matchup_chart(ms)
+        if "opponents" in shown:
+            extra["opponents"] = stats.by_key(ms, "opp_char")[:6]
+        if "characters" in shown:
+            extra["cards"] = stats.character_cards(everything, mains)
+        if shown & {"margins", "knowledge"}:
+            answers = answers_frame()
+            if "margins" in shown:
+                extra["margins"] = training.margins(
+                    training.matches_frame(ms), answers,
+                    (today - timedelta(days=59)).isoformat(), limit=6).to_dict("records")
+            if "knowledge" in shown:
+                extra["knowledge"] = training.knowledge(answers).reset_index() \
+                    .sort_values("quiz_rate").to_dict("records")
+        if "plan" in shown:
+            extra["goals"] = db.execute(
+                "SELECT * FROM training_goals WHERE status != 'done' AND player_id = ? "
+                "ORDER BY status = 'doing' DESC, created_at DESC LIMIT 5", (player_id(),)).fetchall()
+
         return render_template(
             "home.html",
+            layout=layout,
+            catalog=widgets.CATALOG,
+            hidden_widgets=widgets.hidden(layout),
+            **extra,
             char=char,
             switch=switch,
             portrait=has_portrait,
@@ -275,6 +307,25 @@ def create_app(test_config=None):
             last_seen=ms[-1]["played_at"],
             wr_class=stats.wr_class,
         )
+
+    # ---------- Widgets de l'accueil ----------
+
+    @app.post("/widgets")
+    def save_widgets():
+        """Enregistre la disposition envoyée par la page (JSON : {"layout": [...]})."""
+        data = request.get_json(silent=True) or {}
+        layout = widgets.normalize(data.get("layout"))
+        get_db().execute("UPDATE players SET layout = ? WHERE polaris_id = ?",
+                         (json.dumps(layout), player_id()))
+        get_db().commit()
+        return {"layout": layout}
+
+    @app.post("/widgets/reinitialiser")
+    def reset_widgets():
+        get_db().execute("UPDATE players SET layout = NULL WHERE polaris_id = ?", (player_id(),))
+        get_db().commit()
+        flash("Disposition par défaut rétablie.")
+        return redirect(url_for("home", perso=request.args.get("perso")))
 
     # ---------- Portraits ----------
 
@@ -771,6 +822,17 @@ def get_profile():
 
 def player_id():
     return g.player["polaris_id"]
+
+
+def player_layout():
+    """Disposition des widgets du joueur, ou celle par défaut."""
+    raw = g.player["layout"]
+    if raw:
+        try:
+            return widgets.normalize(json.loads(raw))
+        except ValueError:
+            pass
+    return [dict(w) for w in widgets.DEFAULT_LAYOUT]
 
 
 def daily_done_days():

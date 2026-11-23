@@ -1,0 +1,33 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+{% if daily|length > 1 %}
+  <div class="chart-big"><canvas id="progressChart"></canvas></div>
+  <script>
+    (() => {
+      const daily = {{ daily|tojson }};
+      const goal = {{ goal_rating|tojson }};
+      const canvas = document.getElementById('progressChart');
+      if (!canvas || typeof Chart === 'undefined') return;
+      const grid = { color: 'rgba(255,255,255,0.06)' };
+      const datasets = [{
+        label: 'Rating', data: daily.map(p => p.rating), borderColor: '#8b7bff',
+        backgroundColor: 'rgba(139,123,255,0.15)', fill: true, tension: 0.3, borderWidth: 2.5,
+        pointRadius: 3, pointBackgroundColor: '#8b7bff',
+      }];
+      if (goal) datasets.push({
+        label: 'Objectif', data: daily.map(() => goal), borderColor: 'rgba(242,193,46,0.8)',
+        borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, fill: false,
+      });
+      new Chart(canvas, {
+        type: 'line',
+        data: { labels: daily.map(p => p.date.slice(8, 10) + '/' + p.date.slice(5, 7)), datasets },
+        options: {
+          animation: false, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          interaction: { mode: 'index', intersect: false },
+          scales: { x: { ticks: { maxTicksLimit: 10, color: '#8a93a6' }, grid },
+                    y: { ticks: { color: '#8a93a6' }, grid } },
+        },
+      });
+    })();
+  </script>
+{% else %}<p class="muted small">Pas encore assez de jours de jeu pour tracer une courbe.</p>{% endif %}

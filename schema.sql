@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS players (
     mains TEXT,                          -- persos principaux, séparés par des virgules
     goal_rank TEXT,
     goal_rating INTEGER,
+    layout TEXT,                         -- disposition des widgets de l'accueil (JSON)
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_import_at TEXT
 );

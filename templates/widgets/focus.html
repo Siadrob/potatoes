@@ -1,0 +1,24 @@
+{% from "_macros.html" import wr, delta, wlbar %}
+<div class="focus">
+  <div>
+    <div class="label bad">À travailler</div>
+    {% for r in to_work %}
+    <div class="focus-item">
+      <a class="focus-row" href="{{ opp_link(r.name, perso=char) }}">
+        <span>{{ r.name }}</span><span class="muted small">{{ r.wins }}V-{{ r.losses }}D</span><strong class="{{ wr_class(r.winrate) }}">{{ r.winrate|round|int }} %</strong>
+      </a>
+      <a class="icon-btn" href="{{ url_for('punish_page', adversaire=r.name, perso=char) }}"
+         title="Réviser {{ r.name }} : punitions et quiz" aria-label="Réviser {{ r.name }}">🎯</a>
+    </div>
+    {% else %}<p class="muted small">Pas assez de matchs.</p>{% endfor %}
+  </div>
+  <div>
+    <div class="label good">Points forts</div>
+    {% for r in strengths %}
+    <a class="focus-row" href="{{ opp_link(r.name, perso=char) }}">
+      <span>{{ r.name }}</span><span class="muted small">{{ r.wins }}V-{{ r.losses }}D</span><strong class="{{ wr_class(r.winrate) }}">{{ r.winrate|round|int }} %</strong>
+    </a>
+    {% else %}<p class="muted small">Pas assez de matchs.</p>{% endfor %}
+  </div>
+</div>
+<p class="small muted">4 matchs min. · <a href="{{ url_for('training_hub', perso=char) }}">toutes mes marges de progression →</a></p>
