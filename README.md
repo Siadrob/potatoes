@@ -11,6 +11,9 @@ et s'entraîner sur les matchups qui posent problème. Il tourne en local, sur t
   puis des **widgets** au choix (progression, semaine, défi du jour, courbe, matchups,
   calendrier, marges de progression, plan…). Bouton « Personnaliser » : glisser-déposer,
   taille petite / moyenne / large, masquer, ajouter ; disposition enregistrée par joueur.
+- **Hub Tekken** sur l'accueil : vidéos YouTube sur ton perso (guides, combos, lecture
+  sur place) et streamers Tekken 8 en live sur Twitch (ceux qui jouent ton perso, puis en
+  français, puis les plus regardés). En colonnes sur grand écran, sous les widgets sinon.
 - **Import automatique** des matchs classés depuis [wank.wavu.wiki](https://wank.wavu.wiki)
   (500 derniers matchs à chaque import, sans doublons) et des rangs Dan via l'API
   [ewgf.gg](https://ewgf.gg) (facultatif).
@@ -79,8 +82,8 @@ Pour développer, `flask --app app run --debug` recharge le code à chaque modif
 
 ## Configuration (facultative)
 
-Sans configuration, tout fonctionne sauf les rangs Dan (clé ewgf.gg) et la rubrique
-Tournois (token start.gg). Pour les activer, crée le fichier de configuration local à partir
+Sans configuration, tout fonctionne sauf les rangs Dan (clé ewgf.gg), la rubrique
+Tournois (token start.gg) et le hub vidéos / lives (clés YouTube et Twitch). Pour les activer, crée le fichier de configuration local à partir
 du modèle :
 
 ```bash
@@ -99,7 +102,13 @@ sur [start.gg](https://www.start.gg), profil, Developer Settings, « Create new 
 joueur lie ensuite son profil start.gg depuis la page Tournois (en un clic si son pseudo
 start.gg correspond à son pseudo Tekken).
 
-**Une seule clé (et un seul token) suffit pour tout le site** : les joueurs, eux, n'entrent que leur ID Tekken.
+Pour le **hub** : une clé `YOUTUBE_API_KEY` (Google Cloud, « YouTube Data API v3 », puis
+« Créer une clé API ») et, pour Twitch, `TWITCH_CLIENT_ID` et `TWITCH_CLIENT_SECRET`
+(dev.twitch.tv/console, enregistrer une application avec la redirection `http://localhost`).
+Les vidéos sont gardées en cache 24 h par perso (quota YouTube : une centaine de
+recherches par jour), les lives 5 minutes.
+
+**Une seule clé (et un seul token) par service suffit pour tout le site** : les joueurs, eux, n'entrent que leur ID Tekken.
 Le quota gratuit (100 requêtes par heure) est partagé entre tous les joueurs du site,
 ce qui suffit largement pour un petit groupe. Le dossier `instance/` est ignoré par Git :
 la clé n'est jamais commitée.
@@ -191,6 +200,8 @@ Chaque argument est un ID Tekken, suivi facultativement de `:` et du profil star
 | « ewgf : erreur invalid_api_key » | La clé dans `instance/config.py` est fausse ou révoquée : régénère-la sur ewgf.gg. |
 | « ewgf : erreur rate_limit_exceeded » | Quota gratuit (100 requêtes par heure) atteint : réessaie l'heure suivante. |
 | « start.gg : token start.gg invalide ou expiré » | Régénère un token sur start.gg et remplace `STARTGG_TOKEN` dans `instance/config.py`. |
+| Le hub affiche « Il manque le TWITCH_CLIENT_SECRET » | Ajoute le Client Secret de ton application Twitch dans `instance/config.py`, puis relance le site. |
+| Vidéos indisponibles (erreur 403) | Quota YouTube du jour atteint ou clé restreinte : les vidéos déjà en cache restent affichées, réessaie demain. |
 | La page Tournois demande un token | Ajoute `STARTGG_TOKEN` dans `instance/config.py` (voir Configuration), puis relance le site. |
 | Graphiques ou polices absents | Ils sont chargés depuis internet (jsDelivr, Google Fonts) : vérifie la connexion. |
 | Une page affiche « Frame data indisponible » | Le wiki Wavu est injoignable : réessaie plus tard. Les frames déjà téléchargées restent en cache 14 jours. |
@@ -205,6 +216,7 @@ Chaque argument est un ID Tekken, suivi facultativement de `:` et du profil star
 | `stats.py` | Statistiques de matchs (winrate, séries, sessions, progression) |
 | `wavu.py`, `ewgf.py` | Import des matchs (wank.wavu.wiki) et des rangs Dan (API ewgf.gg) |
 | `startgg.py`, `tournaments.py` | API start.gg et statistiques de tournoi |
+| `media.py` | Hub : vidéos YouTube et lives Twitch (avec cache) |
 | `framedata.py` | Frame data du wiki Wavu en DataFrames pandas, cache, punitions |
 | `training.py` | Quiz, défi du jour, marges de progression |
 | `widgets.py`, `templates/widgets/` | Catalogue des widgets de l'accueil et leur contenu |
@@ -217,7 +229,8 @@ Chaque argument est un ID Tekken, suivi facultativement de `:` et du profil star
 ## Données et crédits
 
 Projet non affilié à Bandai Namco. Matchs : [Wavu Wank](https://wank.wavu.wiki) et
-[ewgf.gg](https://ewgf.gg). Tournois : [start.gg](https://www.start.gg). Frame data et vidéos des coups : [Wavu Wiki](https://wavu.wiki) ;
+[ewgf.gg](https://ewgf.gg). Tournois : [start.gg](https://www.start.gg).
+Vidéos : YouTube (lecteur sans cookies). Lives : Twitch. Frame data et vidéos des coups : [Wavu Wiki](https://wavu.wiki) ;
 les coups sans vidéo renvoient vers [okizeme.gg](https://okizeme.gg).
 Illustrations : site officiel Bandai Namco, téléchargées pour un usage local uniquement
 et jamais commitées. Les punisseurs sont calculés automatiquement : vérifie-les en training mode.

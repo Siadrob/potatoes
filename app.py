@@ -13,6 +13,7 @@ import pandas as pd
 
 import ewgf
 import framedata
+import media
 import portraits
 import startgg
 import stats
@@ -65,13 +66,19 @@ def create_app(test_config=None):
         ENABLE_MATCHES_PAGES=False,
         STARTGG_TOKEN=os.environ.get("STARTGG_TOKEN"),
         STARTGG_RUN=None,          # fonction (requête, variables) -> data ; remplaçable en test
+        YOUTUBE_API_KEY=os.environ.get("YOUTUBE_API_KEY"),
+        TWITCH_CLIENT_ID=os.environ.get("TWITCH_CLIENT_ID"),
+        TWITCH_CLIENT_SECRET=os.environ.get("TWITCH_CLIENT_SECRET"),
+        HUB_LANGUAGE="fr",          # langue privilégiée pour les lives Twitch
+        MEDIA_GET=None,             # fonction d'accès HTTP du hub ; remplaçable en test
     )
     if test_config:
         # Pas d'accès réseau implicite pendant les tests.
         # Les tests couvrent aussi les rubriques en pause, pour qu'elles restent fonctionnelles.
         app.config.update({"PORTRAIT_OFFICIAL": None, "WAVU_FETCH": _offline,
                            "FRAMEDATA_FETCH": _offline, "SECRET_KEY": "tests",
-                           "ENABLE_MATCHES_PAGES": True, "STARTGG_TOKEN": None, **test_config})
+                           "ENABLE_MATCHES_PAGES": True, "STARTGG_TOKEN": None,
+                           "YOUTUBE_API_KEY": None, "TWITCH_CLIENT_ID": None, **test_config})
     else:
         # Réglages locaux (clé API…) dans instance/config.py, exclu de Git.
         app.config.from_pyfile("config.py", silent=True)
@@ -80,6 +87,9 @@ def create_app(test_config=None):
 
     init_db(app.config["DATABASE"])
     app.teardown_appcontext(close_db)
+    media_get = app.config["MEDIA_GET"] or media._get_json
+    twitch = (media.Twitch(app.config["TWITCH_CLIENT_ID"], app.config["TWITCH_CLIENT_SECRET"], get=media_get)
+              if app.config.get("TWITCH_CLIENT_ID") and app.config.get("TWITCH_CLIENT_SECRET") else None)
     app.jinja_env.globals["okizeme_url"] = framedata.okizeme_url
 
     @app.before_request
@@ -283,6 +293,7 @@ def create_app(test_config=None):
 
         return render_template(
             "home.html",
+            hub=hub_data(char),
             board="home",
             layout=layout,
             catalog=widgets.CATALOG,
@@ -456,6 +467,28 @@ def create_app(test_config=None):
         if run and ident:
             tournament_data(run, ident, force=True)
         return redirect(url_for("tournaments_page"))
+
+    # ---------- Hub : vidéos YouTube et lives Twitch ----------
+
+    def hub_data(char):
+        """Contenu des colonnes du hub ; chaque bloc indique son état (ok, erreur, non configuré)."""
+        db = get_db()
+        hub = {"videos": None, "videos_error": None, "streams": None, "streams_error": None,
+               "youtube": bool(app.config.get("YOUTUBE_API_KEY")), "twitch": twitch is not None,
+               "twitch_partial": bool(app.config.get("TWITCH_CLIENT_ID")) and twitch is None}
+        if hub["youtube"]:
+            try:
+                hub["videos"] = media.cached(db, f"youtube:{char}", media.VIDEOS_TTL, lambda: media.youtube_videos(
+                    app.config["YOUTUBE_API_KEY"], char, get=media_get))
+            except media.MediaError as e:
+                hub["videos_error"] = str(e)
+        if twitch is not None:
+            try:
+                streams = media.cached(db, "twitch:streams", media.STREAMS_TTL, twitch.streams)
+                hub["streams"] = media.rank_streams(streams, char, app.config["HUB_LANGUAGE"])
+            except (media.MediaError, KeyError) as e:
+                hub["streams_error"] = str(e)
+        return hub
 
     # ---------- Portraits ----------
 

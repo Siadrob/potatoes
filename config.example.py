@@ -14,6 +14,15 @@ EWGF_API_KEY = ""
 # Un seul token sert à tout le site ; chaque joueur lie ensuite son profil start.gg.
 STARTGG_TOKEN = ""
 
+# Hub de l'accueil (facultatif) : vidéos YouTube sur ton perso et lives Twitch Tekken 8.
+# YouTube : https://console.cloud.google.com > nouveau projet > activer « YouTube Data API v3 »
+#           > Identifiants > Créer une clé API.
+# Twitch  : https://dev.twitch.tv/console > Enregistrer une application (redirection http://localhost)
+#           > Client ID, puis « Nouveau secret » pour le Client Secret.
+YOUTUBE_API_KEY = ""
+TWITCH_CLIENT_ID = ""
+TWITCH_CLIENT_SECRET = ""
+
 # Rubriques « Matchs » et « Matchups » (liste des matchs, saisie manuelle, notes par
 # matchup) : en pause pour l'instant. Mets True pour les réactiver.
 # ENABLE_MATCHES_PAGES = False

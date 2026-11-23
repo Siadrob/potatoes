@@ -1,0 +1,23 @@
+<section class="card hub-card">
+  <div class="panel-title"><h2><span class="live-dot"></span> En live</h2><span class="muted small">Twitch · Tekken 8</span></div>
+  {% if hub.twitch_partial %}
+    <p class="muted small">Il manque le <code>TWITCH_CLIENT_SECRET</code> dans <code>instance/config.py</code>
+      pour afficher les lives (voir le README).</p>
+  {% elif not hub.twitch %}
+    <p class="muted small">Ajoute les identifiants Twitch dans <code>instance/config.py</code>
+      pour voir ici les streamers Tekken 8 en direct (voir le README).</p>
+  {% elif hub.streams_error %}
+    <p class="muted small">Lives indisponibles pour l'instant ({{ hub.streams_error }}).</p>
+  {% else %}
+    {% for s in hub.streams %}
+    <a class="stream-card" href="{{ s.url }}" target="_blank" rel="noopener">
+      <span class="video-thumb"><img src="{{ s.thumb }}" alt="" loading="lazy">
+        <span class="viewers">● {{ s.viewers }}</span>
+        {% if s.mentions_char %}<span class="char-tag">{{ char }}</span>{% endif %}</span>
+      <span class="video-title">{{ s.user }} <span class="lang">{{ (s.language or '')|upper }}</span></span>
+      <span class="muted small stream-title">{{ s.title }}</span>
+    </a>
+    {% else %}<p class="muted small">Personne n'est en live sur Tekken 8 en ce moment.</p>{% endfor %}
+    <a class="small" href="https://www.twitch.tv/directory/category/tekken-8" target="_blank" rel="noopener">Tous les lives Tekken 8 ↗</a>
+  {% endif %}
+</section>

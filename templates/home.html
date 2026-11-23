@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import wr, delta, wlbar %}
 {% block title %}{{ char or 'Accueil' }}{% endblock %}
+{% block main_class %}hub-page{% endblock %}
 {% block content %}
 
 {% if not char %}
@@ -12,6 +13,8 @@
   </div>
 {% else %}
 
+<div class="hub">
+<div class="hub-main">
 {# ---------- Le perso ---------- #}
 <section class="home-hero {{ 'has-art' if portrait else 'no-art' }}" style="--hue: {{ hue }}">
   {% if portrait %}
@@ -88,5 +91,10 @@
 </div>
 
 {% include "_widget_grid.html" %}
+</div>
+
+<aside class="hub-rail hub-left" aria-label="Vidéos sur {{ char }}">{% include "_hub_videos.html" %}</aside>
+<aside class="hub-rail hub-right" aria-label="Lives Tekken 8">{% include "_hub_live.html" %}</aside>
+</div>
 {% endif %}
 {% endblock %}

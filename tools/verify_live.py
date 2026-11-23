@@ -161,6 +161,11 @@ def verify(profile, app):
     # Profil et liens
     page = text_of(client.get("/").get_data(as_text=True))
     raw = client.get("/").get_data(as_text=True)
+    if CFG.get("YOUTUBE_API_KEY"):
+        titles = re.findall(r'data-title="([^"]+)"', raw)
+        on_char = [t for t in titles if main.lower() in t.lower()]
+        check(tag, f"hub : vidéos sur {main} ({len(on_char)}/{len(titles)})",
+              titles and len(on_char) >= len(titles) // 2, str(titles[:3]))
     check(tag, f"accueil : perso le plus joué = {main}", f"Statistiques détaillées de {main}" in page)
     if steam:
         check(tag, "lien Steam", f"steamcommunity.com/profiles/{steam}" in raw)
@@ -249,6 +254,8 @@ def main(argv):
     pdir = os.path.join(work, "portraits")
     os.makedirs(pdir, exist_ok=True)
     app = create_app({"DATABASE": db, "PORTRAITS_DIR": pdir, "SECRET_KEY": "verif",
+                      "YOUTUBE_API_KEY": CFG.get("YOUTUBE_API_KEY"), "TWITCH_CLIENT_ID": CFG.get("TWITCH_CLIENT_ID"),
+                      "TWITCH_CLIENT_SECRET": CFG.get("TWITCH_CLIENT_SECRET"),
                       "WAVU_FETCH": wavu.fetch_player_page, "FRAMEDATA_FETCH": framedata.fetch_raw,
                       "PORTRAIT_OFFICIAL": portraits.fetch_official, "EWGF_API_KEY": CFG.get("EWGF_API_KEY"),
                       "STARTGG_TOKEN": CFG.get("STARTGG_TOKEN"), "ENABLE_MATCHES_PAGES": False})

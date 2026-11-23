@@ -39,7 +39,7 @@
     {% endif %}
   </header>
 
-  <main>
+  <main class="{% block main_class %}{% endblock %}">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
       <div class="toasts" role="status" aria-live="polite">

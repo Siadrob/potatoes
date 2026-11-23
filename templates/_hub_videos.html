@@ -1,0 +1,44 @@
+<section class="card hub-card">
+  <div class="panel-title"><h2>▶ Vidéos {{ char }}</h2><span class="muted small">YouTube</span></div>
+  {% if not hub.youtube %}
+    <p class="muted small">Ajoute une clé <code>YOUTUBE_API_KEY</code> dans <code>instance/config.py</code>
+      pour voir ici des guides et combos sur ton perso (voir le README).</p>
+  {% elif hub.videos_error %}
+    <p class="muted small">Vidéos indisponibles pour l'instant ({{ hub.videos_error }}).</p>
+  {% else %}
+    {% for v in hub.videos %}
+    <a class="video-card" href="{{ v.url }}" target="_blank" rel="noopener"
+       data-video="{{ v.id }}" data-title="{{ v.title }}">
+      <span class="video-thumb"><img src="{{ v.thumb }}" alt="" loading="lazy"><span class="play">▶</span></span>
+      <span class="video-title">{{ v.title }}</span>
+      <span class="muted small">{{ v.channel }} · {{ v.date[8:10] }}/{{ v.date[5:7] }}/{{ v.date[2:4] }}</span>
+    </a>
+    {% else %}<p class="muted small">Aucune vidéo trouvée.</p>{% endfor %}
+    <a class="small" href="https://www.youtube.com/results?search_query={{ ('Tekken 8 ' ~ char)|urlencode }}"
+       target="_blank" rel="noopener">Plus de vidéos sur YouTube ↗</a>
+  {% endif %}
+</section>
+
+<dialog class="video-modal" id="videoModal">
+  <div class="video-modal-head"><strong id="videoModalTitle"></strong>
+    <button type="button" class="toast-close" id="videoModalClose" aria-label="Fermer">✕</button></div>
+  <div class="video-frame"><iframe id="videoModalFrame" title="Vidéo YouTube" allowfullscreen
+       allow="autoplay; encrypted-media; picture-in-picture"></iframe></div>
+</dialog>
+<script>
+  (() => {
+    const modal = document.getElementById('videoModal');
+    const frame = document.getElementById('videoModalFrame');
+    if (!modal || !modal.showModal) return;          // navigateur trop ancien : le lien ouvre YouTube
+    const close = () => { frame.src = ''; modal.close(); };
+    document.querySelectorAll('.video-card[data-video]').forEach(card => card.addEventListener('click', e => {
+      e.preventDefault();
+      document.getElementById('videoModalTitle').textContent = card.dataset.title;
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + card.dataset.video + '?autoplay=1&rel=0';
+      modal.showModal();
+    }));
+    document.getElementById('videoModalClose').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.addEventListener('cancel', () => { frame.src = ''; });
+  })();
+</script>
